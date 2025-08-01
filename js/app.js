@@ -120,8 +120,6 @@ function settingsModal(showModalStream, themeStream = currentTheme) {
   });
 }
 
-
-
 // === App entry ===
 document.addEventListener('DOMContentLoaded', async () => {
   // Retrieve values from localStorage

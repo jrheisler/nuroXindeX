@@ -51,7 +51,6 @@ async function fetchDocumentIndex() {
 }
 
 // Function to upload a file to GitHub and get the file URL
-// Function to upload a file to GitHub and get the file URL
 async function uploadFileToGitHub(file, title) {
   const base64Content = await getBase64(file); // Get the Base64 string of the file
   const filePath = `${repoPath}/${encodeURIComponent(title)}`;
