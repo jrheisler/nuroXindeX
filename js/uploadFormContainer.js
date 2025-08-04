@@ -17,6 +17,10 @@ function base64Decode(str) {
   return decodeURIComponent(escape(atob(str)));
 }
 
+function triggerEnrichmentPipeline(doc) {
+    console.log("Triggering enrichment pipeline for document:", doc);
+}
+
 async function fetchDocumentIndexFromGitHub() {
   const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${repoPath}/index.json`, {
     headers: {
@@ -200,6 +204,7 @@ function uploadToggleContainer(showFormStream) {
 // === Upload form container ===
 function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStream, themeStream = currentTheme) {
   const titleStream = new Stream('');
+  const descriptionStream = new Stream('');
   const statusStream = new Stream('');
   const fileStream = new Stream(null);
   const categoryStream = new Stream('');
@@ -246,7 +251,8 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
 
     const content = container([
       fileInput(fileStream, { margin: '0.5rem 0' }, themeStream),
-      editText(titleStream, { placeholder: 'Title', margin: '0.5rem 0' }, themeStream),
+      editText(titleStream, { placeholder: 'Title (required)', margin: '0.5rem 0' }, themeStream),
+      editTextArea(descriptionStream, { placeholder: 'Optional description', margin: '0.5rem 0' }, themeStream),
       dropdownStream(statusStream, {
         choices: ['draft', 'under review', 'approved', 'final', 'archived'],
         margin: '0.5rem 0'
@@ -257,7 +263,7 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
        // === Save Button Handler ===
     (() => {
     const isSaving = new Stream(false);
-    const saveLabel = derived(isSaving, val => val ? "Saving..." : "Save");
+    const saveLabel = derived(isSaving, val => val ? "Saving..." : "Upload and Process");
 
     return reactiveButton(saveLabel, async () => {
         if (isSaving.get()) return;
@@ -286,11 +292,17 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
         }
 
         const title = titleStream.get().trim();
+        if (!title) {
+            alert("Title is required.");
+            isSaving.set(false);
+            return;
+        }
         const docs = documentsStream.get();
         const index = docs.findIndex(doc => doc.title === title);
         const now = new Date().toISOString();
 
         const newDoc = {
+        description: descriptionStream.get(),
         meta: metaStream.get(),
         category: categoryStream.get(),
         title,
@@ -300,6 +312,8 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
         lastUpdated: now,
         id: title,
         };
+
+        triggerEnrichmentPipeline(newDoc);
 
         try {
         const fileUrl = await uploadFileToGitHub(file, title);

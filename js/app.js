@@ -188,8 +188,5 @@ document.addEventListener('DOMContentLoaded', async () => {
           themedThemeSelector()
         ])
       ),
-      documentListContainer(documentsStream, expandedCategories, currentTheme, ['title', 'status', 'meta', 'filename', 'lastUpdated', 'download'])
-    ])
-  );
-});
+...
 
