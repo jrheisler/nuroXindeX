@@ -192,32 +192,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     ])
   );
 
-  // === Demo for listView component ===
-  const simpleListData = ['Apple', 'Banana', 'Cherry'];
-  const simpleListStream = new Stream(simpleListData);
-
-  const simpleListView = listView(
-    simpleListStream,
-    (itemText) => {
-      const itemEl = document.createElement('div');
-      itemEl.textContent = itemText;
-      itemEl.style.padding = '0.5rem';
-      itemEl.style.borderBottom = '1px solid #ccc';
-      return itemEl;
-    },
-    { tag: 'div', className: 'simple-list' }
-  );
-
-  // Add a little container for the demo
-  const demoContainer = column([
-    reactiveText(new Stream("ListView Demo"), { size: '1.5rem', weight: 'bold' }),
-    simpleListView,
-    reactiveButton(new Stream("Add Item"), () => {
-        const currentList = simpleListStream.get();
-        simpleListStream.set([...currentList, `New Item ${currentList.length + 1}`]);
-    })
-  ], { margin: '2rem 0' });
-
-  document.body.appendChild(demoContainer);
 });
 
