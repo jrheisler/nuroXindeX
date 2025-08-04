@@ -120,6 +120,50 @@ function settingsModal(showModalStream, themeStream = currentTheme) {
   });
 }
 
+// Function to check if the file already exists in the GitHub repository
+async function checkIfFileExists(filePath) {
+  const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `token ${githubToken}`,
+    }
+  });
+
+  if (response.ok) {
+    const data = await response.json();
+    return data; // File exists, return file data including sha
+  } else if (response.status === 404) {
+    return null; // File doesn't exist
+  } else {
+    const errorData = await response.json();
+    console.error("Error checking file:", errorData);
+    throw new Error("Error checking file existence");
+  }
+}
+
+async function ensureDirectoriesExist() {
+    const dirs = ['docs', 'meta'];
+    for (const dir of dirs) {
+        const path = `${repoPath}/${dir}/.gitkeep`;
+        const fileExists = await checkIfFileExists(path);
+        if (!fileExists) {
+            console.log(`Directory ${dir} does not exist. Creating...`);
+            const emptyContent = btoa('');
+            await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${path}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${githubToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: `Create ${dir} directory`,
+                    content: emptyContent,
+                })
+            });
+        }
+    }
+}
+
 // === App entry ===
 document.addEventListener('DOMContentLoaded', async () => {
   // Retrieve values from localStorage
@@ -130,6 +174,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   repoPath = localStorage.getItem('repoPath');
 
   githubToken = base64Decode(githubTokenEncoded);
+
+  await ensureDirectoriesExist();
 
 
   // Apply theme
@@ -191,5 +237,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       documentListContainer(documentsStream, expandedCategories, currentTheme, ['title', 'status', 'meta', 'filename', 'lastUpdated', 'download'])
     ])
   );
+
 });
 
