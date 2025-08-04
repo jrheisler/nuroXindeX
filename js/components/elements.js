@@ -230,9 +230,33 @@ function toggleSwitch(stream, options = {}, themeStream = currentTheme) {
   const unsub2 = themeStream.subscribe(applyStyles);
   applyStyles(themeStream.get());
 
-  observeDOMRemoval(el, unsub1, unsub2); // 🔥 Auto cleanup when node removed
+  observeDOMRemoval(wrapper, unsub1, unsub2); // 🔥 Auto cleanup when node removed
 
   return wrapper;
+}
+
+function listView(dataStream, itemRenderFn, options = {}) {
+  const el = document.createElement(options.tag || 'div');
+  el.className = options.className || 'list-view';
+
+  function render(data) {
+    el.innerHTML = ''; // Clear previous items
+    if (Array.isArray(data)) {
+      data.forEach((item, index) => {
+        const itemEl = itemRenderFn(item, index);
+        if (itemEl instanceof Node) {
+          el.appendChild(itemEl);
+        }
+      });
+    }
+  }
+
+  const unsubscribe = dataStream.subscribe(render);
+  render(dataStream.get());
+
+  observeDOMRemoval(el, unsubscribe);
+
+  return el;
 }
 
 

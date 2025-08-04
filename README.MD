@@ -122,7 +122,7 @@ jazira-js/
 
 ## 🛠 Future Ideas
 
-* [ ] Add `reactiveImage`, `toggleSwitch`, and `listView`
+* [x] Add `reactiveImage`, `toggleSwitch`, and `listView`
 * [ ] Add `hydrate(json)` and `toJSON(domNode)` for layout persistence
 * [ ] Optional drag-and-drop UI builder
 * [ ] Optional export as ES module / NPM package
