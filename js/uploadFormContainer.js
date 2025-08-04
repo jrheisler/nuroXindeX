@@ -37,6 +37,7 @@ async function getUniqueSlug(title) {
     return uniqueSlug;
 }
 
+
 async function extractTextFromFile(file) {
     if (file.type === 'text/plain') {
         return new Promise((resolve, reject) => {
@@ -76,6 +77,7 @@ async function createMetadataFile(slug, title, filePath, summary) {
         title: title,
         path: filePath,
         summary: summary,
+
     };
     const metadataContent = btoa(JSON.stringify(metadata, null, 2));
     const metadataFilePath = `${repoPath}/meta/${slug}.json`;
@@ -378,7 +380,9 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
         const fileUrl = await uploadFileToGitHub(file, slug);
         newDoc.url = fileUrl;
 
+
         await createMetadataFile(slug, title, fileUrl, summary);
+
 
         await updateDocumentIndex(newDoc);
 
