@@ -37,7 +37,6 @@ async function getUniqueSlug(title) {
     return uniqueSlug;
 }
 
-
 async function extractTextFromFile(file) {
     if (file.type === 'text/plain') {
         return new Promise((resolve, reject) => {
@@ -60,7 +59,7 @@ async function summarizeText(text) {
         return null;
     }
     try {
-        const summarizer = await pipeline('summarization', 'Xenova/distilbart-cnn-6-6');
+        const summarizer = await window.Transformers.pipeline('summarization', 'Xenova/distilbart-cnn-6-6');
         const summary = await summarizer(text, {
             max_length: 100,
             min_length: 30,
@@ -77,8 +76,8 @@ async function createMetadataFile(slug, title, filePath, summary) {
         title: title,
         path: filePath,
         summary: summary,
-
     };
+    console.log("Creating metadata file with:", metadata);
     const metadataContent = btoa(JSON.stringify(metadata, null, 2));
     const metadataFilePath = `${repoPath}/meta/${slug}.json`;
 
@@ -347,7 +346,9 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
         }
 
         const textContent = await extractTextFromFile(file);
+        console.log("Extracted text:", textContent);
         const summary = await summarizeText(textContent);
+        console.log("Generated summary:", summary);
 
         const title = titleStream.get().trim();
         if (!title) {
@@ -376,13 +377,13 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
 
         triggerEnrichmentPipeline(newDoc);
 
+        console.log("newDoc object:", newDoc);
+
         try {
         const fileUrl = await uploadFileToGitHub(file, slug);
         newDoc.url = fileUrl;
 
-
         await createMetadataFile(slug, title, fileUrl, summary);
-
 
         await updateDocumentIndex(newDoc);
 
