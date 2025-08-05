@@ -203,7 +203,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const showModalStream = new Stream(false);
   const userAvatarStream = new Stream('doc.webp');
-  const userAvatar = avatarDropdown(userAvatarStream, { width: '50px', height: '50px', rounded: true }, themeStream = currentTheme, [
+  const userAvatar = avatarDropdown(
+    userAvatarStream,
+    { width: '50px', height: '50px', rounded: true },
+    currentTheme,
+    [
     { label: 'Profile', onClick: () => showToast('Profile clicked') },
     { 
   label: 'Settings', 
