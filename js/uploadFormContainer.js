@@ -71,10 +71,8 @@ async function createMetadataFile(slug, title, filePath, summary) {
     const metadata = {
         title: title,
         path: filePath,
+        summary: summary || "",
     };
-    if (summary) {
-        metadata.summary = summary;
-    }
     console.log("Creating metadata file with:", metadata);
     const metadataContent = btoa(JSON.stringify(metadata, null, 2));
     const metadataFilePath = `${repoPath}/meta/${slug}.json`;
