@@ -112,6 +112,52 @@ function editText(stream, options = {}, themeStream = currentTheme) {
   return input;
 }
 
+function editTextArea(stream, options = {}, themeStream = currentTheme) {
+  const textarea = document.createElement('textarea');
+  textarea.value = stream.get();
+  textarea.placeholder = options.placeholder || '';
+
+  function applyStyles(theme) {
+    const fonts = theme.fonts || {};
+    const colors = theme.colors || {};
+
+    applyTheme(textarea, options);
+
+    textarea.style.fontSize = options.size || '1rem';
+    textarea.style.width = options.width || '100%';
+    textarea.style.fontFamily = options.monospace
+      ? fonts.monospace
+      : fonts.base || 'sans-serif';
+    textarea.style.backgroundColor = options.bg || colors.primary || '#333';
+    textarea.style.color = options.color || colors.foreground || '#eee';
+    textarea.style.border = 'none';
+    textarea.style.borderRadius = '4px';
+    textarea.style.padding = options.padding || '0.5rem';
+    textarea.style.transition = 'background-color 0.3s, color 0.3s';
+    textarea.rows = options.rows || 3;
+
+    if (options.margin) textarea.style.margin = options.margin;
+  }
+
+  textarea.addEventListener('input', () => {
+    stream.set(textarea.value);
+  });
+
+
+  const unsub1 = themeStream.subscribe(theme => applyStyles(theme));
+  applyStyles(themeStream.get()); // Initial style
+
+  const unsub2 = stream.subscribe(value => {
+    if (textarea.value !== value) {
+      textarea.value = value;
+    }
+  });
+
+  observeDOMRemoval(textarea, unsub1, unsub2); // 🔥 Auto cleanup when node removed
+
+  return textarea;
+}
+
 function reactiveImage(stream, options = {}, themeStream = currentTheme) {
   const img = document.createElement('img');
 
@@ -230,9 +276,33 @@ function toggleSwitch(stream, options = {}, themeStream = currentTheme) {
   const unsub2 = themeStream.subscribe(applyStyles);
   applyStyles(themeStream.get());
 
-  observeDOMRemoval(el, unsub1, unsub2); // 🔥 Auto cleanup when node removed
+  observeDOMRemoval(wrapper, unsub1, unsub2); // 🔥 Auto cleanup when node removed
 
   return wrapper;
+}
+
+function listView(dataStream, itemRenderFn, options = {}) {
+  const el = document.createElement(options.tag || 'div');
+  el.className = options.className || 'list-view';
+
+  function render(data) {
+    el.innerHTML = ''; // Clear previous items
+    if (Array.isArray(data)) {
+      data.forEach((item, index) => {
+        const itemEl = itemRenderFn(item, index);
+        if (itemEl instanceof Node) {
+          el.appendChild(itemEl);
+        }
+      });
+    }
+  }
+
+  const unsubscribe = dataStream.subscribe(render);
+  render(dataStream.get());
+
+  observeDOMRemoval(el, unsubscribe);
+
+  return el;
 }
 
 
