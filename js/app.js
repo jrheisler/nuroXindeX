@@ -142,6 +142,9 @@ async function checkIfFileExists(filePath) {
 }
 
 async function ensureDirectoriesExist() {
+    if (!githubToken) {
+        throw new Error("GitHub token not found. Please set it in the settings.");
+    }
     const dirs = ['docs', 'meta'];
     for (const dir of dirs) {
         const path = `${repoPath}/${dir}/.gitkeep`;
