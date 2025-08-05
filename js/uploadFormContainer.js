@@ -17,8 +17,38 @@ function base64Decode(str) {
   return decodeURIComponent(escape(atob(str)));
 }
 
-function triggerEnrichmentPipeline(doc) {
-    console.log("Triggering enrichment pipeline for document:", doc);
+// === Hugging Face summarization ===
+async function summarizeText(text) {
+    try {
+        // Using Hugging Face's BART model via summarization pipeline
+        const response = await fetch('https://api-inference.huggingface.co/models/facebook/bart-large-cnn', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ inputs: text })
+        });
+        if (!response.ok) {
+            console.error('Summarization API error:', await response.text());
+            return '';
+        }
+        const data = await response.json();
+        return Array.isArray(data) && data[0] && data[0].summary_text ? data[0].summary_text : '';
+    } catch (err) {
+        console.error('Error generating summary:', err);
+        return '';
+    }
+}
+
+async function triggerEnrichmentPipeline(file) {
+    console.log('Triggering enrichment pipeline for file:', file && file.name);
+    try {
+        const text = await file.text();
+        return await summarizeText(text.slice(0, 3000));
+    } catch (err) {
+        console.error('Enrichment pipeline failed:', err);
+        return '';
+    }
 }
 
 function generateSlug(title) {
@@ -37,11 +67,14 @@ async function getUniqueSlug(title) {
     return uniqueSlug;
 }
 
-async function createMetadataFile(slug, title, filePath) {
+async function createMetadataFile(slug, title, filePath, summary) {
     const metadata = {
         title: title,
         path: filePath,
     };
+    if (summary) {
+        metadata.summary = summary;
+    }
     console.log("Creating metadata file with:", metadata);
     const metadataContent = btoa(JSON.stringify(metadata, null, 2));
     const metadataFilePath = `${repoPath}/meta/${slug}.json`;
@@ -334,7 +367,7 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
         id: slug,
         };
 
-        triggerEnrichmentPipeline(newDoc);
+        const summary = await triggerEnrichmentPipeline(file);
 
         console.log("newDoc object:", newDoc);
 
@@ -342,7 +375,7 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
         const fileUrl = await uploadFileToGitHub(file, slug);
         newDoc.url = fileUrl;
 
-        await createMetadataFile(slug, title, fileUrl);
+        await createMetadataFile(slug, title, fileUrl, summary);
 
         await updateDocumentIndex(newDoc);
 
