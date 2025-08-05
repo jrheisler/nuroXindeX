@@ -1,5 +1,3 @@
-import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.1';
-
 // Retrieve values from localStorage
 var githubUsername = '';
 var githubTokenEncoded = '';
@@ -61,8 +59,7 @@ async function summarizeText(text) {
         return null;
     }
     try {
-
-        const summarizer = await window.Transformers.pipeline('summarization', 'Xenova/distilbart-cnn-6-6');
+        const summarizer = await transformers.pipeline('summarization', 'Xenova/distilbart-cnn-6-6');
         const summary = await summarizer(text, {
             max_length: 100,
             min_length: 30,
