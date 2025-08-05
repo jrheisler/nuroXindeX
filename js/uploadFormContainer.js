@@ -63,7 +63,6 @@ async function summarizeText(text) {
     try {
 
         const summarizer = await window.Transformers.pipeline('summarization', 'Xenova/distilbart-cnn-6-6');
-
         const summary = await summarizer(text, {
             max_length: 100,
             min_length: 30,
