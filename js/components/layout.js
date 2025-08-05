@@ -1,4 +1,4 @@
-export function column(children = [], options = {}, themeStream = currentTheme) {
+function column(children = [], options = {}, themeStream = currentTheme) {
   const el = document.createElement('div');
   el.style.display = 'flex';
   el.style.flexDirection = 'column';
@@ -23,13 +23,13 @@ export function column(children = [], options = {}, themeStream = currentTheme) 
   return el;
 }
 
-export function row(children = [], options = {}, themeStream = currentTheme) {
+function row(children = [], options = {}, themeStream = currentTheme) {
   const el = column(children, { ...options, direction: 'row' }, themeStream);
   el.style.flexDirection = 'row';
   return el;
 }
 
-export function container(child, options = {}, themeStream = currentTheme) {
+function container(child, options = {}, themeStream = currentTheme) {
   const div = document.createElement('div');
 
   if (Array.isArray(child)) {
@@ -59,7 +59,7 @@ export function container(child, options = {}, themeStream = currentTheme) {
 
 
 // 📐 Grid: CSS Grid Layout
-export function grid(children = [], options = {}, themeStream = currentTheme) {
+function grid(children = [], options = {}, themeStream = currentTheme) {
   const el = document.createElement('div');
   el.style.display = 'grid';
 
@@ -82,7 +82,7 @@ export function grid(children = [], options = {}, themeStream = currentTheme) {
 }
 
 // 🔲 Spacer: Flexible or fixed space
-export function spacer(options = {}) {
+function spacer(options = {}) {
   const el = document.createElement('div');
   el.style.flexGrow = options.flexGrow || '1';
   el.style.width = options.width || 'auto';
@@ -91,7 +91,7 @@ export function spacer(options = {}) {
 }
 
 // ➖ Divider: Horizontal or vertical line
-export function divider(options = {}, themeStream = currentTheme) {
+function divider(options = {}, themeStream = currentTheme) {
   const el = document.createElement('div');
 
   const isVertical = options.vertical || false;

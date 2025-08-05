@@ -1,5 +1,3 @@
-import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.1';
-
 // Retrieve values from localStorage
 var githubUsername = '';
 var githubTokenEncoded = '';
@@ -17,83 +15,6 @@ function base64Encode(str) {
 // Base64 decode function (deobfuscation)
 function base64Decode(str) {
   return decodeURIComponent(escape(atob(str)));
-}
-
-function triggerEnrichmentPipeline(doc) {
-    console.log("Triggering enrichment pipeline for document:", doc);
-}
-
-function generateSlug(title) {
-    const baseSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    return baseSlug;
-}
-
-async function getUniqueSlug(title) {
-    let slug = generateSlug(title);
-    let counter = 1;
-    let uniqueSlug = slug;
-    while (await checkIfFileExists(`${repoPath}/docs/${uniqueSlug}`)) {
-        uniqueSlug = `${slug}-${counter}`;
-        counter++;
-    }
-    return uniqueSlug;
-}
-
-async function extractTextFromFile(file) {
-    if (file.type === 'text/plain') {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                resolve(event.target.result);
-            };
-            reader.onerror = (error) => {
-                reject(error);
-            };
-            reader.readAsText(file);
-        });
-    } else {
-        return Promise.resolve(null); // Return null for non-txt files for now
-    }
-}
-
-async function summarizeText(text) {
-    if (!text) {
-        return null;
-    }
-    try {
-        const summarizer = await pipeline('summarization', 'Xenova/distilbart-cnn-6-6');
-        const summary = await summarizer(text, {
-            max_length: 100,
-            min_length: 30,
-        });
-        return summary[0].summary_text;
-    } catch (error) {
-        console.error("Error during summarization:", error);
-        return null;
-    }
-}
-
-async function createMetadataFile(slug, title, filePath, summary) {
-    const metadata = {
-        title: title,
-        path: filePath,
-        summary: summary,
-    };
-    console.log("Creating metadata file with:", metadata);
-    const metadataContent = btoa(JSON.stringify(metadata, null, 2));
-    const metadataFilePath = `${repoPath}/meta/${slug}.json`;
-
-    await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${metadataFilePath}`, {
-        method: 'PUT',
-        headers: {
-            'Authorization': `token ${githubToken}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            message: `Create metadata for ${title}`,
-            content: metadataContent,
-        })
-    });
 }
 
 async function fetchDocumentIndexFromGitHub() {
@@ -130,10 +51,9 @@ async function fetchDocumentIndex() {
 }
 
 // Function to upload a file to GitHub and get the file URL
-async function uploadFileToGitHub(file, slug) {
+async function uploadFileToGitHub(file, title) {
   const base64Content = await getBase64(file); // Get the Base64 string of the file
-  const extension = file.name.slice(file.name.lastIndexOf('.'));
-  const filePath = `${repoPath}/docs/${slug}${extension}`;
+  const filePath = `${repoPath}/${encodeURIComponent(title)}`;
 
   try {
     // Check if the file already exists to get the sha for updates
@@ -153,7 +73,7 @@ async function uploadFileToGitHub(file, slug) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        message: `Upload document: ${file.name}`,
+        message: `Upload document: ${title}`,
         content: base64Content, // Base64 encoded file content
         sha: sha, // Add sha for existing files
       })
@@ -174,6 +94,26 @@ async function uploadFileToGitHub(file, slug) {
   }
 }
 
+// Function to check if the file already exists in the GitHub repository
+async function checkIfFileExists(filePath) {
+  const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `token ${githubToken}`,
+    }
+  });
+
+  if (response.ok) {
+    const data = await response.json();
+    return data; // File exists, return file data including sha
+  } else if (response.status === 404) {
+    return null; // File doesn't exist
+  } else {
+    const errorData = await response.json();
+    console.error("Error checking file:", errorData);
+    throw new Error("Error checking file existence");
+  }
+}
 
 
 // Helper function to convert file to base64
@@ -260,7 +200,6 @@ function uploadToggleContainer(showFormStream) {
 // === Upload form container ===
 function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStream, themeStream = currentTheme) {
   const titleStream = new Stream('');
-  const descriptionStream = new Stream('');
   const statusStream = new Stream('');
   const fileStream = new Stream(null);
   const categoryStream = new Stream('');
@@ -307,8 +246,7 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
 
     const content = container([
       fileInput(fileStream, { margin: '0.5rem 0' }, themeStream),
-      editText(titleStream, { placeholder: 'Title (required)', margin: '0.5rem 0' }, themeStream),
-      editTextArea(descriptionStream, { placeholder: 'Optional description', margin: '0.5rem 0' }, themeStream),
+      editText(titleStream, { placeholder: 'Title', margin: '0.5rem 0' }, themeStream),
       dropdownStream(statusStream, {
         choices: ['draft', 'under review', 'approved', 'final', 'archived'],
         margin: '0.5rem 0'
@@ -319,7 +257,7 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
        // === Save Button Handler ===
     (() => {
     const isSaving = new Stream(false);
-    const saveLabel = derived(isSaving, val => val ? "Saving..." : "Upload and Process");
+    const saveLabel = derived(isSaving, val => val ? "Saving..." : "Save");
 
     return reactiveButton(saveLabel, async () => {
         if (isSaving.get()) return;
@@ -347,25 +285,12 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
         return;
         }
 
-        const textContent = await extractTextFromFile(file);
-        console.log("Extracted text:", textContent);
-        const summary = await summarizeText(textContent);
-        console.log("Generated summary:", summary);
-
         const title = titleStream.get().trim();
-        if (!title) {
-            alert("Title is required.");
-            isSaving.set(false);
-            return;
-        }
-
-        const slug = await getUniqueSlug(title);
         const docs = documentsStream.get();
         const index = docs.findIndex(doc => doc.title === title);
         const now = new Date().toISOString();
 
         const newDoc = {
-        description: descriptionStream.get(),
         meta: metaStream.get(),
         category: categoryStream.get(),
         title,
@@ -373,19 +298,12 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
         filename: file.name,
         createdAt: index >= 0 ? docs[index].createdAt : now,
         lastUpdated: now,
-        id: slug,
-        summary: summary,
+        id: title,
         };
 
-        triggerEnrichmentPipeline(newDoc);
-
-        console.log("newDoc object:", newDoc);
-
         try {
-        const fileUrl = await uploadFileToGitHub(file, slug);
+        const fileUrl = await uploadFileToGitHub(file, title);
         newDoc.url = fileUrl;
-
-        await createMetadataFile(slug, title, fileUrl, summary);
 
         await updateDocumentIndex(newDoc);
 
