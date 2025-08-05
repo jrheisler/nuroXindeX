@@ -93,8 +93,6 @@ All return DOM elements and can be appended directly.
 ### Theming
 
 ```js
-import { currentTheme, themes, applyThemeToPage } from './core/theme.js';
-
 currentTheme.set('dark'); // Switch to dark theme
 applyThemeToPage(currentTheme.get());
 ```

@@ -1,5 +1,3 @@
-import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.1';
-
 // Retrieve values from localStorage
 var githubUsername = '';
 var githubTokenEncoded = '';
@@ -39,45 +37,10 @@ async function getUniqueSlug(title) {
     return uniqueSlug;
 }
 
-async function extractTextFromFile(file) {
-    if (file.type === 'text/plain') {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                resolve(event.target.result);
-            };
-            reader.onerror = (error) => {
-                reject(error);
-            };
-            reader.readAsText(file);
-        });
-    } else {
-        return Promise.resolve(null); // Return null for non-txt files for now
-    }
-}
-
-async function summarizeText(text) {
-    if (!text) {
-        return null;
-    }
-    try {
-        const summarizer = await pipeline('summarization', 'Xenova/distilbart-cnn-6-6');
-        const summary = await summarizer(text, {
-            max_length: 100,
-            min_length: 30,
-        });
-        return summary[0].summary_text;
-    } catch (error) {
-        console.error("Error during summarization:", error);
-        return null;
-    }
-}
-
-async function createMetadataFile(slug, title, filePath, summary) {
+async function createMetadataFile(slug, title, filePath) {
     const metadata = {
         title: title,
         path: filePath,
-        summary: summary,
     };
     console.log("Creating metadata file with:", metadata);
     const metadataContent = btoa(JSON.stringify(metadata, null, 2));
@@ -347,11 +310,6 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
         return;
         }
 
-        const textContent = await extractTextFromFile(file);
-        console.log("Extracted text:", textContent);
-        const summary = await summarizeText(textContent);
-        console.log("Generated summary:", summary);
-
         const title = titleStream.get().trim();
         if (!title) {
             alert("Title is required.");
@@ -374,7 +332,6 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
         createdAt: index >= 0 ? docs[index].createdAt : now,
         lastUpdated: now,
         id: slug,
-        summary: summary,
         };
 
         triggerEnrichmentPipeline(newDoc);
@@ -385,7 +342,7 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
         const fileUrl = await uploadFileToGitHub(file, slug);
         newDoc.url = fileUrl;
 
-        await createMetadataFile(slug, title, fileUrl, summary);
+        await createMetadataFile(slug, title, fileUrl);
 
         await updateDocumentIndex(newDoc);
 
