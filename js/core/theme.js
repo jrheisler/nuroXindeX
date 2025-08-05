@@ -1,6 +1,7 @@
 // theme.js
+import { Stream } from './stream.js';
 
-const themes = {
+export const themes = {
   dark: {
     name: 'Dark',
     colors: {
@@ -156,9 +157,9 @@ const themes = {
 
 
 
-const currentTheme = new Stream(themes.dark); // Start with dark mode
+export const currentTheme = new Stream(themes.dark); // Start with dark mode
 
-function applyTheme(el, options = {}) {
+export function applyTheme(el, options = {}) {
   const {
     size = '1rem',
     weight = 'normal',
@@ -188,7 +189,7 @@ function applyTheme(el, options = {}) {
     document.body.style.transition = 'background-color 0.3s, color 0.3s';
   });
 }
-function themeToggleButton() {
+export function themeToggleButton() {
   const button = document.createElement('button');
   button.textContent = '🌗 Toggle Theme';
 
@@ -202,7 +203,7 @@ function themeToggleButton() {
   return button;
 }
 
-function themedThemeSelector(themeStream = currentTheme) {
+export function themedThemeSelector(themeStream = currentTheme) {
   const container = document.createElement('div');
   container.style.display = 'flex';
   container.style.alignItems = 'center';
@@ -258,7 +259,7 @@ function themedThemeSelector(themeStream = currentTheme) {
 }
 
 
-function applyThemeToPage(theme, container = document.body) {
+export function applyThemeToPage(theme, container = document.body) {
   const colors = theme.colors || {};
   const fonts = theme.fonts || {};
 

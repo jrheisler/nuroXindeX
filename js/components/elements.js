@@ -1,8 +1,8 @@
-function text(str) {
+export function text(str) {
   return document.createTextNode(str);
 }
 
-function reactiveElement(stream, renderFn = v => v) {
+export function reactiveElement(stream, renderFn = v => v) {
   const placeholder = document.createElement('div');
 
   function update(value) {
@@ -30,7 +30,7 @@ function reactiveElement(stream, renderFn = v => v) {
 }
 
 
-function reactiveText(stream, options = {}, themeStream = currentTheme) {
+export function reactiveText(stream, options = {}, themeStream = currentTheme) {
   const el = document.createElement(options.tag || 'p');
 
   function applyStyles(theme) {
@@ -64,7 +64,7 @@ function reactiveText(stream, options = {}, themeStream = currentTheme) {
   return el;
 }
 
-function editText(stream, options = {}, themeStream = currentTheme) {
+export function editText(stream, options = {}, themeStream = currentTheme) {
   const input = document.createElement('input');
   input.type = 'text';
   input.value = stream.get();
@@ -112,7 +112,53 @@ function editText(stream, options = {}, themeStream = currentTheme) {
   return input;
 }
 
-function reactiveImage(stream, options = {}, themeStream = currentTheme) {
+export function editTextArea(stream, options = {}, themeStream = currentTheme) {
+  const textarea = document.createElement('textarea');
+  textarea.value = stream.get();
+  textarea.placeholder = options.placeholder || '';
+
+  function applyStyles(theme) {
+    const fonts = theme.fonts || {};
+    const colors = theme.colors || {};
+
+    applyTheme(textarea, options);
+
+    textarea.style.fontSize = options.size || '1rem';
+    textarea.style.width = options.width || '100%';
+    textarea.style.fontFamily = options.monospace
+      ? fonts.monospace
+      : fonts.base || 'sans-serif';
+    textarea.style.backgroundColor = options.bg || colors.primary || '#333';
+    textarea.style.color = options.color || colors.foreground || '#eee';
+    textarea.style.border = 'none';
+    textarea.style.borderRadius = '4px';
+    textarea.style.padding = options.padding || '0.5rem';
+    textarea.style.transition = 'background-color 0.3s, color 0.3s';
+    textarea.rows = options.rows || 3;
+
+    if (options.margin) textarea.style.margin = options.margin;
+  }
+
+  textarea.addEventListener('input', () => {
+    stream.set(textarea.value);
+  });
+
+
+  const unsub1 = themeStream.subscribe(theme => applyStyles(theme));
+  applyStyles(themeStream.get()); // Initial style
+
+  const unsub2 = stream.subscribe(value => {
+    if (textarea.value !== value) {
+      textarea.value = value;
+    }
+  });
+
+  observeDOMRemoval(textarea, unsub1, unsub2); // 🔥 Auto cleanup when node removed
+
+  return textarea;
+}
+
+export function reactiveImage(stream, options = {}, themeStream = currentTheme) {
   const img = document.createElement('img');
 
   function applyStyles(theme) {
@@ -143,7 +189,7 @@ function reactiveImage(stream, options = {}, themeStream = currentTheme) {
   return img;
 }
 
-function toggleSwitch(stream, options = {}, themeStream = currentTheme) {
+export function toggleSwitch(stream, options = {}, themeStream = currentTheme) {
   const wrapper = document.createElement('div');
   wrapper.style.display = 'flex';
   wrapper.style.alignItems = 'center';
@@ -230,13 +276,37 @@ function toggleSwitch(stream, options = {}, themeStream = currentTheme) {
   const unsub2 = themeStream.subscribe(applyStyles);
   applyStyles(themeStream.get());
 
-  observeDOMRemoval(el, unsub1, unsub2); // 🔥 Auto cleanup when node removed
+  observeDOMRemoval(wrapper, unsub1, unsub2); // 🔥 Auto cleanup when node removed
 
   return wrapper;
 }
 
+export function listView(dataStream, itemRenderFn, options = {}) {
+  const el = document.createElement(options.tag || 'div');
+  el.className = options.className || 'list-view';
 
-function reactiveButton(labelStream, onClick, options = {}, themeStream = currentTheme) {
+  function render(data) {
+    el.innerHTML = ''; // Clear previous items
+    if (Array.isArray(data)) {
+      data.forEach((item, index) => {
+        const itemEl = itemRenderFn(item, index);
+        if (itemEl instanceof Node) {
+          el.appendChild(itemEl);
+        }
+      });
+    }
+  }
+
+  const unsubscribe = dataStream.subscribe(render);
+  render(dataStream.get());
+
+  observeDOMRemoval(el, unsubscribe);
+
+  return el;
+}
+
+
+export function reactiveButton(labelStream, onClick, options = {}, themeStream = currentTheme) {
   const button = document.createElement('button');
   button.type = 'button';
 
@@ -349,7 +419,7 @@ function reactiveButton(labelStream, onClick, options = {}, themeStream = curren
 }
 
 
-function fileInput(stream, options = {}, themeStream = currentTheme) {
+export function fileInput(stream, options = {}, themeStream = currentTheme) {
   const input = document.createElement('input');
   input.type = 'file';
 
@@ -383,7 +453,7 @@ function fileInput(stream, options = {}, themeStream = currentTheme) {
   return input;
 }
 
-function conditional(showStream, childElementFn) {
+export function conditional(showStream, childElementFn) {
   const wrapper = document.createElement('div');
   let child = null;
 
@@ -402,7 +472,7 @@ function conditional(showStream, childElementFn) {
   return wrapper;
 }
 
-function headerContainer(titleStream) {
+export function headerContainer(titleStream) {
   return container([
     reactiveText(titleStream, {
       size: '2rem',
@@ -417,7 +487,7 @@ function headerContainer(titleStream) {
 }
 
 
-function groupedDocumentGrid(documentsStream, expandedStream, themeStream = currentTheme, keys = ['title', 'status', 'meta', 'filename']) {
+export function groupedDocumentGrid(documentsStream, expandedStream, themeStream = currentTheme, keys = ['title', 'status', 'meta', 'filename']) {
   const wrapper = document.createElement('div');
   wrapper.style.overflowX = 'auto';
   wrapper.style.width = '100%';
@@ -678,7 +748,7 @@ wrapper.appendChild(contentWrapper);
   return wrapper;
 }
 
-function gridView(dataStream, options = {}, themeStream = currentTheme) {
+export function gridView(dataStream, options = {}, themeStream = currentTheme) {
   const wrapper = document.createElement('div');
   wrapper.style.overflowX = 'auto';
   wrapper.style.width = '100%';
@@ -756,7 +826,7 @@ function gridView(dataStream, options = {}, themeStream = currentTheme) {
   return wrapper;
 }
 
-function editableDropdown(valueStream, optionsStream, themeStream = currentTheme) {
+export function editableDropdown(valueStream, optionsStream, themeStream = currentTheme) {
   const wrapper = document.createElement('div');
   const select = document.createElement('select');
   const input = document.createElement('input');
@@ -824,7 +894,7 @@ function editableDropdown(valueStream, optionsStream, themeStream = currentTheme
   return wrapper;
 }
 
-async function showFileHistoryModal(filename, themeStream = currentTheme) {
+export async function showFileHistoryModal(filename, themeStream = currentTheme) {
   const modal = document.createElement('div');
   modal.style.position = 'fixed';
   modal.style.top = 0;
@@ -937,7 +1007,7 @@ async function showFileHistoryModal(filename, themeStream = currentTheme) {
   }
 }
 
-function dropdownStream(stream, selectOptions = [], themeStream = currentTheme) {
+export function dropdownStream(stream, selectOptions = [], themeStream = currentTheme) {
   const select = document.createElement('select');
 
   function applyStyles(theme) {
@@ -998,7 +1068,7 @@ function dropdownStream(stream, selectOptions = [], themeStream = currentTheme) 
   return select;
 }
 
-function avatarImage(stream, options = {}, themeStream = currentTheme) {
+export function avatarImage(stream, options = {}, themeStream = currentTheme) {
   // Create the img element
   const img = document.createElement('img');
 
@@ -1035,7 +1105,7 @@ function avatarImage(stream, options = {}, themeStream = currentTheme) {
   return img; // Return the img element
 }
 
-function avatarDropdown(stream, options = {}, themeStream = currentTheme, menuItems = []) {
+export function avatarDropdown(stream, options = {}, themeStream = currentTheme, menuItems = []) {
   const container = document.createElement('div');
   container.style.position = 'relative';
   container.style.display = 'inline-block';
@@ -1146,7 +1216,7 @@ function avatarDropdown(stream, options = {}, themeStream = currentTheme, menuIt
 }
 
 
-function showConfirmationDialog(message, themeStream = currentTheme) {
+export function showConfirmationDialog(message, themeStream = currentTheme) {
   return new Promise((resolve) => {
     // Create modal container
     const modal = document.createElement('div');
@@ -1262,7 +1332,7 @@ function showConfirmationDialog(message, themeStream = currentTheme) {
 }
 
 
-function showToast(message, {
+export function showToast(message, {
   duration = 3000,
   themeStream = currentTheme,
   type = 'info' // 'info' | 'success' | 'warning' | 'error'
@@ -1327,7 +1397,7 @@ function showToast(message, {
 }
 
 
-function createDiagramOverlay(nameStream, versionStream, themeStream) {
+export function createDiagramOverlay(nameStream, versionStream, themeStream) {
   const overlay = document.createElement('div');
   overlay.className = 'diagram-overlay';
 

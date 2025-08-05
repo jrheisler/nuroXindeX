@@ -1,4 +1,4 @@
-class Stream {
+export class Stream {
   constructor(initial) {
     this.subscribers = [];
 
@@ -39,7 +39,7 @@ class Stream {
 }
 
 // === Helper: derived stream ===
-function derived(streams, transformFn, options = {}) {
+export function derived(streams, transformFn, options = {}) {
   const isArray = Array.isArray(streams);
   const sources = isArray ? streams : [streams];
   const getValues = () => isArray ? streams.map(s => s.get()) : [streams.get()];
@@ -84,7 +84,7 @@ function derived(streams, transformFn, options = {}) {
 
 
 
-function fieldStream(sourceStream, fieldName) {
+export function fieldStream(sourceStream, fieldName) {
   const derived = new Stream(sourceStream.get()?.[fieldName] ?? '');
   sourceStream.subscribe(value => {
     derived.set(value?.[fieldName] ?? '');
@@ -93,7 +93,7 @@ function fieldStream(sourceStream, fieldName) {
 }
 
 
-function observeDOMRemoval(el, ...cleanups) {
+export function observeDOMRemoval(el, ...cleanups) {
   const observer = new MutationObserver(() => {
     if (!document.body.contains(el)) {
       cleanups.forEach(fn => fn?.());
