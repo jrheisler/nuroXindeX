@@ -109,9 +109,35 @@ async function fetchDocumentIndexFromGitHub() {
     throw new Error("Unable to fetch document index from GitHub.");
   }
 
-  const result = await response.json(); // ✅ This works with metadata response
-  const decodedContent = atob(result.content); // Base64 → string
-  return JSON.parse(decodedContent);           // string → object[]
+  const result = await response.json();
+  const decodedContent = atob(result.content);
+  const index = JSON.parse(decodedContent);
+
+  // Enrich each document with its summary from meta files
+  const enriched = await Promise.all(index.map(async doc => {
+    const metaPath = `${repoPath}/meta/${doc.id}.json`;
+    try {
+      const metaResponse = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${metaPath}`, {
+        headers: {
+          'Authorization': `token ${githubToken}`
+        }
+      });
+      if (metaResponse.ok) {
+        const metaResult = await metaResponse.json();
+        const metaDecoded = atob(metaResult.content);
+        const metaData = JSON.parse(metaDecoded);
+        doc.summary = metaData.summary || '';
+      } else {
+        doc.summary = '';
+      }
+    } catch (err) {
+      console.error(`Failed to fetch meta for ${doc.id}:`, err);
+      doc.summary = '';
+    }
+    return doc;
+  }));
+
+  return enriched;
 }
 
 
@@ -370,6 +396,7 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
         createdAt: index >= 0 ? docs[index].createdAt : now,
         lastUpdated: now,
         id: slug,
+        summary: ''
         };
 
         const summary = await triggerEnrichmentPipeline(file);
@@ -379,6 +406,8 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
         try {
         const fileUrl = await uploadFileToGitHub(file, slug);
         newDoc.url = fileUrl;
+
+        newDoc.summary = summary;
 
         await createMetadataFile(slug, title, fileUrl, summary);
 
