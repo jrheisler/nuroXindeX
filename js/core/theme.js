@@ -262,6 +262,12 @@ function applyThemeToPage(theme, container = document.body) {
   const colors = theme.colors || {};
   const fonts = theme.fonts || {};
 
+  const root = document.documentElement;
+  root.style.setProperty('--background', colors.background || '#ffffff');
+  root.style.setProperty('--foreground', colors.foreground || '#000000');
+  root.style.setProperty('--surface', colors.surface || '#ffffff');
+  root.style.setProperty('--border', colors.border || '#cccccc');
+
   container.style.backgroundColor = colors.background || '#ffffff';
   container.style.color = colors.foreground || '#000000';
   container.style.fontFamily = fonts.base || 'sans-serif';

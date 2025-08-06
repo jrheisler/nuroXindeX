@@ -5,7 +5,7 @@ const expandedCategories = new Stream({});
 // === Document grid container ===
 function documentListContainer(documentsStream, expandedStream = expandedCategories, themeStream = currentTheme, keys = ['title', 'status', 'meta', 'summary', 'filename', 'lastUpdated', 'download']) {
   return container([
-    groupedDocumentGrid(documentsStream, expandedStream, themeStream, keys)
+    groupedDocumentCards(documentsStream, expandedStream, themeStream, keys)
   ], { padding: '1rem' });
 }
 
