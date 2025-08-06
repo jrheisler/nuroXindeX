@@ -82,13 +82,17 @@ async function extractTextFromFile(file) {
     return await file.text();
 }
 
-async function triggerEnrichmentPipeline(file) {
+// Trigger the enrichment pipeline while reporting stage via statusStream
+async function triggerEnrichmentPipeline(file, statusStream) {
     console.log('Triggering enrichment pipeline for file:', file && file.name);
     try {
+        if (statusStream) statusStream.set('extracting');
         const text = await extractTextFromFile(file);
+        if (statusStream) statusStream.set('summarizing');
         return await summarizeText(text.slice(0, 3000));
     } catch (err) {
         console.error('Enrichment pipeline failed:', err);
+        if (statusStream) statusStream.set('');
         return '';
     }
 }
@@ -192,7 +196,8 @@ async function fetchDocumentIndex() {
 }
 
 // Function to upload a file to GitHub and get the file URL
-async function uploadFileToGitHub(file, slug) {
+// Utilizes XMLHttpRequest so we can hook into progress events
+async function uploadFileToGitHub(file, slug, onProgress) {
   const base64Content = await getBase64(file); // Get the Base64 string of the file
   const extension = file.name.slice(file.name.lastIndexOf('.'));
   const filePath = `${repoPath}/docs/${slug}${extension}`;
@@ -207,29 +212,50 @@ async function uploadFileToGitHub(file, slug) {
       sha = fileExists.sha;
     }
 
-    // Make the request to GitHub API
-    const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `token ${githubToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message: `Upload document: ${file.name}`,
-        content: base64Content, // Base64 encoded file content
-        sha: sha, // Add sha for existing files
-      })
+    const payload = JSON.stringify({
+      message: `Upload document: ${file.name}`,
+      content: base64Content, // Base64 encoded file content
+      ...(sha && { sha }) // Add sha for existing files
     });
 
-    // Check if the response is OK
-    if (response.ok) {
-      const data = await response.json();
-      return data.content.download_url;
-    } else {
-      const errorData = await response.json();
-      console.error("Error uploading file:", errorData); // Log the error for debugging
-      throw new Error(`GitHub API Error: ${errorData.message}`);
+    // Use XMLHttpRequest to allow progress tracking
+    const xhr = new XMLHttpRequest();
+    const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
+    xhr.open('PUT', url);
+    xhr.setRequestHeader('Authorization', `token ${githubToken}`);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+
+    if (xhr.upload && onProgress) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          onProgress(e.loaded, e.total);
+        }
+      };
     }
+
+    return await new Promise((resolve, reject) => {
+      xhr.onerror = () => reject(new Error('Network error while uploading file'));
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            resolve(data.content.download_url);
+          } catch (err) {
+            reject(err);
+          }
+        } else {
+          let message = xhr.statusText;
+          try {
+            const errorData = JSON.parse(xhr.responseText);
+            message = errorData.message || message;
+          } catch (e) { /* ignore */ }
+          console.error("Error uploading file:", message);
+          reject(new Error(`GitHub API Error: ${message}`));
+        }
+      };
+
+      xhr.send(payload);
+    });
   } catch (error) {
     console.error("Error in uploadFileToGitHub:", error); // Log the full error
     throw error;
@@ -247,6 +273,7 @@ function getBase64(file) {
     reader.readAsDataURL(file); // Convert the file to Base64
   });
 }
+
 
 
 // Function to update the document index (index.json) on GitHub
@@ -323,11 +350,16 @@ function uploadToggleContainer(showFormStream) {
 function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStream, themeStream = currentTheme) {
   const titleStream = new Stream('');
   const descriptionStream = new Stream('');
-  const statusStream = new Stream('');
+  const docStatusStream = new Stream('');
   const fileStream = new Stream(null);
   const categoryStream = new Stream('');
   const metaStream = new Stream('');
-  
+
+  // Streams for upload progress/status
+  const statusStream = new Stream('');
+  const progressStream = new Stream(0);
+  const isSaving = new Stream(false);
+  const saveLabel = derived(isSaving, val => val ? "Saving..." : "Upload and Process");
 
   fileStream.subscribe(file => {
     if (file) titleStream.set(file.name);
@@ -367,25 +399,32 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
     closeBtn.addEventListener('click', () => showFormStream.set(false));
     modal.appendChild(closeBtn);
 
+    // progress bar element
+    const progressEl = document.createElement('progress');
+    progressEl.max = 100;
+    progressEl.value = 0;
+    progressEl.style.width = '100%';
+    progressEl.style.display = 'none';
+    progressStream.subscribe(v => progressEl.value = v);
+    isSaving.subscribe(v => progressEl.style.display = v ? 'block' : 'none');
+
     const content = container([
       fileInput(fileStream, { margin: '0.5rem 0' }, themeStream),
       editText(titleStream, { placeholder: 'Title (required)', margin: '0.5rem 0' }, themeStream),
       editTextArea(descriptionStream, { placeholder: 'Optional description', margin: '0.5rem 0' }, themeStream),
-      dropdownStream(statusStream, {
+      dropdownStream(docStatusStream, {
         choices: ['draft', 'under review', 'approved', 'final', 'archived'],
         margin: '0.5rem 0'
       }, themeStream),
       editableDropdown(categoryStream, knownCategoriesStream, themeStream),
       editText(metaStream, { placeholder: 'Meta data', margin: '0.5rem 0' }, themeStream),
-      // === Save Button Handler ===
-       // === Save Button Handler ===
-    (() => {
-    const isSaving = new Stream(false);
-    const saveLabel = derived(isSaving, val => val ? "Saving..." : "Upload and Process");
-
-    return reactiveButton(saveLabel, async () => {
+      reactiveText(statusStream, { margin: '0.5rem 0', size: '0.9rem' }, themeStream),
+      progressEl,
+      reactiveButton(saveLabel, async () => {
         if (isSaving.get()) return;
         isSaving.set(true);
+        statusStream.set('');
+        progressStream.set(0);
 
         const file = fileStream.get();
         if (!file) {
@@ -396,7 +435,6 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
 
         const docs = documentsStream.get();
         const existing = docs.find(doc => doc.filename === file.name);
-        // Inside your async save handler...
 
         if (existing) {
           const confirmReplace = await showConfirmationDialog(
@@ -425,7 +463,7 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
         meta: metaStream.get(),
         category: categoryStream.get(),
         title,
-        status: statusStream.get(),
+        status: docStatusStream.get(),
         filename: file.name,
         createdAt: index >= 0 ? docs[index].createdAt : now,
         lastUpdated: now,
@@ -433,35 +471,40 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
         summary: ''
         };
 
-        const summary = await triggerEnrichmentPipeline(file);
-
-        console.log("newDoc object:", newDoc);
-
+        let summary = '';
         try {
-        const fileUrl = await uploadFileToGitHub(file, slug);
-        newDoc.url = fileUrl;
+          summary = await triggerEnrichmentPipeline(file, statusStream);
+          statusStream.set('uploading');
+          const fileUrl = await uploadFileToGitHub(file, slug, (loaded, total) => {
+            const percent = total ? Math.round((loaded / total) * 100) : 0;
+            progressStream.set(percent);
+          });
+          newDoc.url = fileUrl;
 
-        newDoc.summary = summary;
+          newDoc.summary = summary;
 
-        await createMetadataFile(slug, title, fileUrl, summary);
+          statusStream.set('indexing');
+          await createMetadataFile(slug, title, fileUrl, summary);
 
-        await updateDocumentIndex(newDoc);
+          await updateDocumentIndex(newDoc);
 
-        if (index >= 0) {
+          if (index >= 0) {
             docs[index] = newDoc;
-        } else {
+          } else {
             docs.push(newDoc);
-        }
+          }
 
-        documentsStream.set([...docs]);
-        showFormStream.set(false);
+          documentsStream.set([...docs]);
+          showFormStream.set(false);
         } catch (err) {
-        alert("Error uploading document: " + err.message);
+          statusStream.set('');
+          alert("Error uploading document: " + err.message);
         } finally {
-        isSaving.set(false);
+          isSaving.set(false);
+          statusStream.set('');
+          progressStream.set(0);
         }
-    }, { margin: '0.5rem 0', rounded: true }, themeStream);
-    })()
+      }, { margin: '0.5rem 0', rounded: true }, themeStream)
     ], {});
 
     modal.appendChild(content);
