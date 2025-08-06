@@ -79,17 +79,32 @@ function settingsModal(showModalStream, themeStream = currentTheme) {
           if (isSaving.get()) return;
           isSaving.set(true);
 
-          // Encode the GitHub token before saving
-          const githubTokenEncoded = base64Encode(githubTokenStream.get());
-          const huggingFaceTokenEncoded = base64Encode(huggingFaceTokenStream.get());
+          // Update global variables with current form values
+          githubUsername = githubUsernameStream.get();
+          githubToken = githubTokenStream.get();
+          repoOwner = repoOwnerStream.get();
+          repoName = repoNameStream.get();
+          repoPath = repoPathStream.get();
+          huggingFaceToken = huggingFaceTokenStream.get();
 
-          // Save to localStorage
-          localStorage.setItem('githubUsername', githubUsernameStream.get());
+          // Encode tokens before saving to localStorage
+          githubTokenEncoded = base64Encode(githubToken);
+          huggingFaceTokenEncoded = base64Encode(huggingFaceToken);
+
+          // Persist settings
+          localStorage.setItem('githubUsername', githubUsername);
           localStorage.setItem('githubToken', githubTokenEncoded);
-          localStorage.setItem('repoOwner', repoOwnerStream.get());
-          localStorage.setItem('repoName', repoNameStream.get());
-          localStorage.setItem('repoPath', repoPathStream.get());
+          localStorage.setItem('repoOwner', repoOwner);
+          localStorage.setItem('repoName', repoName);
+          localStorage.setItem('repoPath', repoPath);
           localStorage.setItem('huggingFaceToken', huggingFaceTokenEncoded);
+
+          // Ensure repository directories exist for new settings
+          try {
+            await ensureDirectoriesExist();
+          } catch (err) {
+            console.error('Failed to ensure directories:', err);
+          }
 
           // Close modal after saving
           showModalStream.set(false);
