@@ -1447,10 +1447,14 @@ function documentCard(doc, keys = ['title', 'status', 'summary', 'download'], th
       const link = document.createElement('a');
       link.href = doc.url;
       link.download = doc.filename;
-      link.textContent = 'Download';
+      link.textContent = '⬇️';
+      link.title = `Download ${doc.filename}`;
       link.style.display = 'inline-block';
       link.style.marginTop = '0.5rem';
       link.style.marginRight = '0.5rem';
+      link.style.fontSize = '1.5rem';
+      link.style.textDecoration = 'none';
+      link.style.cursor = 'pointer';
 
       const historyBtn = document.createElement('button');
       historyBtn.textContent = '🕓';
@@ -1458,6 +1462,7 @@ function documentCard(doc, keys = ['title', 'status', 'summary', 'download'], th
       historyBtn.style.cursor = 'pointer';
       historyBtn.style.background = 'none';
       historyBtn.style.border = 'none';
+      historyBtn.style.fontSize = '1.5rem';
       historyBtn.addEventListener('click', () => {
         showFileHistoryModal(doc.filename, themeStream);
       });
