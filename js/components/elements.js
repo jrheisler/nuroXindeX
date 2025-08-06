@@ -2,6 +2,12 @@ function text(str) {
   return document.createTextNode(str);
 }
 
+function keyToTitle(key) {
+  return key
+    .replace(/_/g, ' ')
+    .replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1));
+}
+
 function reactiveElement(stream, renderFn = v => v) {
   const placeholder = document.createElement('div');
 
@@ -644,15 +650,8 @@ wrapper.appendChild(contentWrapper);
       const headRow = document.createElement('tr');
       keys.forEach(key => {
         const th = document.createElement('th');
-        th.textContent = key.toUpperCase();
-        th.style.padding = '0.5rem 1rem';
-        th.style.fontFamily = fonts.base;
-        th.style.fontWeight = 'bold';
-        th.style.backgroundColor = colors.surface;
-        th.style.color = colors.foreground;
-        th.style.border = `1px solid ${colors.border}`;
-        th.style.textAlign = 'left';
-        th.style.whiteSpace = 'nowrap';
+        th.textContent = keyToTitle(key);
+        th.classList.add('table-header', 'table-header-sticky');
         headRow.appendChild(th);
       });
       thead.appendChild(headRow);
@@ -771,15 +770,8 @@ function gridView(dataStream, options = {}, themeStream = currentTheme) {
     const headRow = document.createElement('tr');
     keys.forEach(key => {
       const th = document.createElement('th');
-      th.textContent = key === 'download' ? '' : key.toUpperCase();
-      th.style.padding = '0.5rem 1rem';
-      th.style.fontFamily = fonts.base;
-      th.style.fontWeight = 'bold';
-      th.style.backgroundColor = colors.surface;
-      th.style.color = colors.foreground;
-      th.style.borderRight = `1px solid ${colors.border}`;
-      th.style.whiteSpace = 'nowrap';
-      th.style.textAlign = 'left'; // ✅ Left-align header text
+      th.textContent = key === 'download' ? '' : keyToTitle(key);
+      th.classList.add('table-header', 'table-header-sticky');
       headRow.appendChild(th);
     });
 
