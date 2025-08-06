@@ -399,14 +399,45 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
     closeBtn.addEventListener('click', () => showFormStream.set(false));
     modal.appendChild(closeBtn);
 
-    // progress bar element
+    // spinner element shown while awaiting operations without progress
+    if (!document.getElementById('upload-spinner-style')) {
+      const spinnerStyle = document.createElement('style');
+      spinnerStyle.id = 'upload-spinner-style';
+      spinnerStyle.textContent = `
+        @keyframes upload-spinner { to { transform: rotate(360deg); } }
+        .upload-spinner {
+          width: 24px;
+          height: 24px;
+          border: 4px solid #ccc;
+          border-top-color: #333;
+          border-radius: 50%;
+          animation: upload-spinner 1s linear infinite;
+          margin: 1rem auto;
+        }
+      `;
+      document.head.appendChild(spinnerStyle);
+    }
+
+    const spinnerEl = document.createElement('div');
+    spinnerEl.className = 'upload-spinner';
+    spinnerEl.style.display = 'none';
+
+    // progress bar element (shown during file upload)
     const progressEl = document.createElement('progress');
     progressEl.max = 100;
     progressEl.value = 0;
     progressEl.style.width = '100%';
     progressEl.style.display = 'none';
     progressStream.subscribe(v => progressEl.value = v);
-    isSaving.subscribe(v => progressEl.style.display = v ? 'block' : 'none');
+
+    const updateIndicators = () => {
+      const saving = isSaving.get();
+      const prog = progressStream.get();
+      spinnerEl.style.display = saving && prog === 0 ? 'block' : 'none';
+      progressEl.style.display = saving && prog > 0 ? 'block' : 'none';
+    };
+    isSaving.subscribe(updateIndicators);
+    progressStream.subscribe(updateIndicators);
 
     const content = container([
       fileInput(fileStream, { margin: '0.5rem 0' }, themeStream),
@@ -419,6 +450,7 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
       editableDropdown(categoryStream, knownCategoriesStream, themeStream),
       editText(metaStream, { placeholder: 'Meta data', margin: '0.5rem 0' }, themeStream),
       reactiveText(statusStream, { margin: '0.5rem 0', size: '0.9rem' }, themeStream),
+      spinnerEl,
       progressEl,
       reactiveButton(saveLabel, async () => {
         if (isSaving.get()) return;
