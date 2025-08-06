@@ -1450,7 +1450,20 @@ function documentCard(doc, keys = ['title', 'status', 'summary', 'download'], th
       link.textContent = 'Download';
       link.style.display = 'inline-block';
       link.style.marginTop = '0.5rem';
+      link.style.marginRight = '0.5rem';
+
+      const historyBtn = document.createElement('button');
+      historyBtn.textContent = '🕓';
+      historyBtn.title = 'View File History';
+      historyBtn.style.cursor = 'pointer';
+      historyBtn.style.background = 'none';
+      historyBtn.style.border = 'none';
+      historyBtn.addEventListener('click', () => {
+        showFileHistoryModal(doc.filename, themeStream);
+      });
+
       card.appendChild(link);
+      card.appendChild(historyBtn);
     } else if (key === 'title') {
       const h3 = document.createElement('h3');
       h3.textContent = doc[key] || '';
