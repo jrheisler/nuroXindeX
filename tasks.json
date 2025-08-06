@@ -1,0 +1,10 @@
+[
+  {
+    "task": "Fix icon alignment in navigation menu",
+    "done": true
+  },
+  {
+    "task": "Investigate missing document upload summary",
+    "done": false
+  }
+]
