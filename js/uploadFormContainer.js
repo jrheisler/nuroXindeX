@@ -5,6 +5,8 @@ var githubToken = '';
 var repoOwner = '';
 var repoName = '';
 var repoPath = '';
+var huggingFaceTokenEncoded = '';
+var huggingFaceToken = '';
 
 
 // Base64 encode function (obfuscation)
@@ -19,12 +21,17 @@ function base64Decode(str) {
 
 // === Hugging Face summarization ===
 async function summarizeText(text) {
+    if (!huggingFaceToken) {
+        console.warn('Hugging Face token not set; skipping summary');
+        return '';
+    }
     try {
         // Using Hugging Face's BART model via summarization pipeline
         const response = await fetch('https://api-inference.huggingface.co/models/facebook/bart-large-cnn', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${huggingFaceToken}`
             },
             body: JSON.stringify({ inputs: text })
         });

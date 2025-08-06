@@ -16,6 +16,7 @@ function settingsModal(showModalStream, themeStream = currentTheme) {
   const repoOwner = localStorage.getItem('repoOwner') || '';
   const repoName = localStorage.getItem('repoName') || '';
   const repoPath = localStorage.getItem('repoPath') || '';
+  const huggingFaceTokenEncoded = localStorage.getItem('huggingFaceToken') || '';
 
   // Streams for form data with initial values
   const githubUsernameStream = new Stream(githubUsername);
@@ -23,6 +24,7 @@ function settingsModal(showModalStream, themeStream = currentTheme) {
   const repoOwnerStream = new Stream(repoOwner);
   const repoNameStream = new Stream(repoName);
   const repoPathStream = new Stream(repoPath);
+  const huggingFaceTokenStream = new Stream(base64Decode(huggingFaceTokenEncoded));
 
   return conditional(showModalStream, () => {
     // Create overlay
@@ -68,6 +70,7 @@ function settingsModal(showModalStream, themeStream = currentTheme) {
       editText(repoOwnerStream, { placeholder: 'Repository Owner', margin: '0.5rem 0' }, themeStream),
       editText(repoNameStream, { placeholder: 'Repository Name', margin: '0.5rem 0' }, themeStream),
       editText(repoPathStream, { placeholder: 'Repository Path', margin: '0.5rem 0' }, themeStream),
+      editText(huggingFaceTokenStream, { placeholder: 'Hugging Face Token', margin: '0.5rem 0', type: 'password' }, themeStream),
       (() => {
         const isSaving = new Stream(false);
         const saveLabel = derived(isSaving, val => val ? "Saving..." : "Save");
@@ -78,6 +81,7 @@ function settingsModal(showModalStream, themeStream = currentTheme) {
 
           // Encode the GitHub token before saving
           const githubTokenEncoded = base64Encode(githubTokenStream.get());
+          const huggingFaceTokenEncoded = base64Encode(huggingFaceTokenStream.get());
 
           // Save to localStorage
           localStorage.setItem('githubUsername', githubUsernameStream.get());
@@ -85,6 +89,7 @@ function settingsModal(showModalStream, themeStream = currentTheme) {
           localStorage.setItem('repoOwner', repoOwnerStream.get());
           localStorage.setItem('repoName', repoNameStream.get());
           localStorage.setItem('repoPath', repoPathStream.get());
+          localStorage.setItem('huggingFaceToken', huggingFaceTokenEncoded);
 
           // Close modal after saving
           showModalStream.set(false);
@@ -175,8 +180,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   repoOwner = localStorage.getItem('repoOwner');
   repoName = localStorage.getItem('repoName');
   repoPath = localStorage.getItem('repoPath');
+  huggingFaceTokenEncoded = localStorage.getItem('huggingFaceToken');
 
   githubToken = base64Decode(githubTokenEncoded);
+  huggingFaceToken = base64Decode(huggingFaceTokenEncoded || '');
 
   await ensureDirectoriesExist();
 

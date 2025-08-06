@@ -522,22 +522,15 @@ function groupedDocumentGrid(documentsStream, expandedStream, themeStream = curr
 
   wrapper.appendChild(searchInput);
 
-    // Restore expanded state from localStorage if available
-const savedExpanded = localStorage.getItem('docGroupsExpanded');
-if (savedExpanded) {
-  try {
-    const parsedExpanded = JSON.parse(savedExpanded);
-    expandedStream.set(parsedExpanded);
-
-    // Then update it
-    localStorage.setItem('docGroupsExpanded', JSON.stringify({ 
-      ...parsedExpanded, 
-      [category]: !userExpanded 
-    }));
-  } catch (e) {
-    console.warn('Failed to parse saved expanded state:', e);
+  // Restore expanded state from localStorage if available
+  const savedExpanded = localStorage.getItem('docGroupsExpanded');
+  if (savedExpanded) {
+    try {
+      expandedStream.set(JSON.parse(savedExpanded));
+    } catch (e) {
+      console.warn('Failed to parse saved expanded state:', e);
+    }
   }
-}
 
 
 // Control bar with icon buttons
