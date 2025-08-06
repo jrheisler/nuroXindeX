@@ -47,10 +47,45 @@ async function summarizeText(text) {
     }
 }
 
+async function extractTextFromPdf(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let text = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const strings = content.items.map(item => item.str);
+        text += strings.join(' ') + ' ';
+    }
+    return text;
+}
+
+async function extractTextFromDoc(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    try {
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        return result.value;
+    } catch (err) {
+        console.error('DOC extraction failed:', err);
+        return '';
+    }
+}
+
+async function extractTextFromFile(file) {
+    if (file.type === 'application/pdf') {
+        return await extractTextFromPdf(file);
+    }
+    if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+        file.type === 'application/msword') {
+        return await extractTextFromDoc(file);
+    }
+    return await file.text();
+}
+
 async function triggerEnrichmentPipeline(file) {
     console.log('Triggering enrichment pipeline for file:', file && file.name);
     try {
-        const text = await file.text();
+        const text = await extractTextFromFile(file);
         return await summarizeText(text.slice(0, 3000));
     } catch (err) {
         console.error('Enrichment pipeline failed:', err);
