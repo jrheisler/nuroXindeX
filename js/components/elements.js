@@ -1427,3 +1427,202 @@ function createDiagramOverlay(nameStream, versionStream, themeStream) {
 }
 
 
+
+// 🔖 Card element for displaying a document
+function documentCard(doc, keys = ['title', 'status', 'summary', 'download'], themeStream = currentTheme) {
+  const card = document.createElement('div');
+  card.classList.add('card');
+
+  function applyTheme(theme) {
+    const colors = theme.colors || {};
+    const fonts = theme.fonts || {};
+    card.style.backgroundColor = colors.surface || '#fff';
+    card.style.color = colors.foreground || '#000';
+    card.style.border = `1px solid ${colors.border || '#ccc'}`;
+    card.style.fontFamily = fonts.base || 'sans-serif';
+  }
+
+  keys.forEach(key => {
+    if (key === 'download') {
+      const link = document.createElement('a');
+      link.href = doc.url;
+      link.download = doc.filename;
+      link.textContent = 'Download';
+      link.style.display = 'inline-block';
+      link.style.marginTop = '0.5rem';
+      card.appendChild(link);
+    } else if (key === 'title') {
+      const h3 = document.createElement('h3');
+      h3.textContent = doc[key] || '';
+      h3.style.margin = '0 0 0.5rem 0';
+      card.appendChild(h3);
+    } else if (doc[key] !== undefined) {
+      const p = document.createElement('p');
+      p.innerHTML = `<strong>${keyToTitle(key)}:</strong> ${doc[key]}`;
+      card.appendChild(p);
+    }
+  });
+
+  const unsubTheme = themeStream.subscribe(applyTheme);
+  applyTheme(themeStream.get());
+  observeDOMRemoval(card, unsubTheme);
+
+  return card;
+}
+
+// 📚 Grouped card layout for documents
+function groupedDocumentCards(documentsStream, expandedStream, themeStream = currentTheme, keys = ['title', 'status', 'summary', 'download']) {
+  const wrapper = document.createElement('div');
+  wrapper.style.width = '100%';
+
+  const searchInput = document.createElement('input');
+  searchInput.type = 'text';
+  searchInput.placeholder = 'Search...';
+  searchInput.style.margin = '1rem auto';
+  searchInput.style.padding = '0.5rem';
+  searchInput.style.width = '100%';
+  searchInput.style.maxWidth = '400px';
+  searchInput.style.display = 'block';
+
+  function styleSearchInput(theme) {
+    const colors = theme.colors || {};
+    const fonts = theme.fonts || {};
+    searchInput.style.backgroundColor = colors.surface || '#fff';
+    searchInput.style.color = colors.foreground || '#000';
+    searchInput.style.border = `1px solid ${colors.border || '#ccc'}`;
+    searchInput.style.fontFamily = fonts.base || 'sans-serif';
+  }
+  styleSearchInput(themeStream.get());
+  themeStream.subscribe(styleSearchInput);
+
+  const contentWrapper = document.createElement('div');
+
+  const searchStream = new Stream('');
+  searchInput.addEventListener('input', () => {
+    searchStream.set(searchInput.value);
+  });
+
+  wrapper.appendChild(searchInput);
+
+  // Restore expanded state from localStorage if available
+  const savedExpanded = localStorage.getItem('docGroupsExpanded');
+  if (savedExpanded) {
+    try {
+      expandedStream.set(JSON.parse(savedExpanded));
+    } catch (e) {
+      console.warn('Failed to parse saved expanded state:', e);
+    }
+  }
+
+  // Control bar with icon buttons
+  const controlBar = document.createElement('div');
+  controlBar.style.textAlign = 'right';
+  controlBar.style.margin = '0.5rem 0';
+  controlBar.style.display = 'flex';
+  controlBar.style.justifyContent = 'flex-end';
+  controlBar.style.gap = '0.5rem';
+
+  // Helper function to get all unique categories
+  const getAllCategories = () => {
+    const docs = documentsStream.get();
+    return [...new Set(docs.map(doc => doc.category?.trim() || 'Uncategorized'))];
+  };
+
+  const iconButton = (label, onClick, tooltip) => {
+    const btn = document.createElement('button');
+    btn.innerHTML = label; // icon SVG or symbol
+    btn.title = tooltip;
+    btn.style.fontSize = '1.1rem';
+    btn.style.padding = '0.25rem 0.5rem';
+    btn.style.cursor = 'pointer';
+    btn.addEventListener('click', onClick);
+    return btn;
+  };
+
+  // ▼ Expand All
+  const expandAllBtn = iconButton('▼', () => {
+    const expanded = Object.fromEntries(getAllCategories().map(cat => [cat, true]));
+    expandedStream.set(expanded);
+    localStorage.setItem('docGroupsExpanded', JSON.stringify(expanded));
+  }, 'Expand All');
+
+  // ▶ Collapse All
+  const collapseAllBtn = iconButton('▶', () => {
+    const collapsed = Object.fromEntries(getAllCategories().map(cat => [cat, false]));
+    expandedStream.set(collapsed);
+    localStorage.setItem('docGroupsExpanded', JSON.stringify(collapsed));
+  }, 'Collapse All');
+
+  // ⇄ Toggle All
+  const toggleAllBtn = iconButton('⇄', () => {
+    const current = expandedStream.get();
+    const toggled = Object.fromEntries(getAllCategories().map(cat => [cat, !current[cat]]));
+    expandedStream.set(toggled);
+    localStorage.setItem('docGroupsExpanded', JSON.stringify(toggled));
+  }, 'Toggle All');
+
+  controlBar.appendChild(expandAllBtn);
+  controlBar.appendChild(collapseAllBtn);
+  controlBar.appendChild(toggleAllBtn);
+  wrapper.appendChild(controlBar);
+  wrapper.appendChild(contentWrapper);
+
+  const renderStream = derived(
+    [documentsStream, expandedStream, themeStream, searchStream],
+    (docs, expanded, theme, search) => {
+      contentWrapper.innerHTML = '';
+
+      const lowerSearch = search.trim().toLowerCase();
+      const isSearching = lowerSearch.length > 0;
+
+      const filteredDocs = docs.filter(doc =>
+        keys.some(key => (doc[key]?.toString().toLowerCase().includes(lowerSearch)))
+      );
+
+      const grouped = {};
+      for (const doc of filteredDocs) {
+        const cat = doc.category?.trim() || 'Uncategorized';
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(doc);
+      }
+
+      const colors = theme.colors || {};
+      const fonts = theme.fonts || {};
+
+      for (const [category, groupDocs] of Object.entries(grouped)) {
+        const userExpanded = expanded[category] ?? true;
+        const isExpanded = isSearching ? groupDocs.length > 0 : userExpanded;
+
+        const groupContainer = document.createElement('div');
+
+        const header = document.createElement('div');
+        header.textContent = `${isExpanded ? '▼' : '▶'} ${category}`;
+        header.style.cursor = 'pointer';
+        header.style.fontWeight = 'bold';
+        header.style.padding = '0.5rem 1rem';
+        header.style.fontFamily = fonts.base;
+        header.style.backgroundColor = colors.surface;
+        header.style.color = colors.foreground;
+        header.addEventListener('click', () => {
+          expandedStream.set({ ...expanded, [category]: !userExpanded });
+          localStorage.setItem('docGroupsExpanded', JSON.stringify({ ...expanded, [category]: !userExpanded }));
+        });
+        groupContainer.appendChild(header);
+
+        if (!isExpanded) {
+          contentWrapper.appendChild(groupContainer);
+          continue;
+        }
+
+        const cards = groupDocs.map(doc => documentCard(doc, keys, themeStream));
+        const gridEl = grid(cards, {}, themeStream);
+        groupContainer.appendChild(gridEl);
+        contentWrapper.appendChild(groupContainer);
+      }
+    }
+  );
+
+  renderStream.subscribe(() => {});
+  return wrapper;
+}
+
