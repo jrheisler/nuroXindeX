@@ -3,7 +3,7 @@ const headerTitleStream = new Stream("Documents");
 const expandedCategories = new Stream({});
 
 // === Document grid container ===
-function documentListContainer(documentsStream, expandedStream = expandedCategories, themeStream = currentTheme, keys = ['title', 'status', 'meta', 'filename', 'lastUpdated', 'download']) {
+function documentListContainer(documentsStream, expandedStream = expandedCategories, themeStream = currentTheme, keys = ['title', 'status', 'meta', 'summary', 'filename', 'lastUpdated', 'download']) {
   return container([
     groupedDocumentGrid(documentsStream, expandedStream, themeStream, keys)
   ], { padding: '1rem' });
@@ -263,7 +263,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           themedThemeSelector()
         ])
       ),
-      documentListContainer(documentsStream, expandedCategories, currentTheme, ['title', 'status', 'meta', 'filename', 'lastUpdated', 'download'])
+      documentListContainer(documentsStream, expandedCategories, currentTheme, ['title', 'status', 'meta', 'summary', 'filename', 'lastUpdated', 'download'])
     ])
   );
 

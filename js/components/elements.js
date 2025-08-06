@@ -487,7 +487,7 @@ function headerContainer(titleStream) {
 }
 
 
-function groupedDocumentGrid(documentsStream, expandedStream, themeStream = currentTheme, keys = ['title', 'status', 'meta', 'filename']) {
+function groupedDocumentGrid(documentsStream, expandedStream, themeStream = currentTheme, keys = ['title', 'status', 'meta', 'summary', 'filename']) {
   const wrapper = document.createElement('div');
   wrapper.style.overflowX = 'auto';
   wrapper.style.width = '100%';
