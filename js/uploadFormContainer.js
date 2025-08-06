@@ -387,26 +387,26 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
         if (isSaving.get()) return;
         isSaving.set(true);
 
-        const existing = documentsStream.get().find(doc => doc.title === titleStream.get());
+        const file = fileStream.get();
+        if (!file) {
+            alert("No file selected");
+            isSaving.set(false);
+            return;
+        }
+
+        const docs = documentsStream.get();
+        const existing = docs.find(doc => doc.filename === file.name);
         // Inside your async save handler...
 
         if (existing) {
           const confirmReplace = await showConfirmationDialog(
-            "A document with this title already exists. Uploading a new version?",
+            "A document with this file name already exists. Uploading a new version?",
             themeStream // Pass your themeStream
           );
           if (!confirmReplace) {
             isSaving.set(false);
             return;
           }
-        }
-
-
-        const file = fileStream.get();
-        if (!file) {
-        alert("No file selected");
-        isSaving.set(false);
-        return;
         }
 
         const title = titleStream.get().trim();
@@ -416,9 +416,8 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
             return;
         }
 
-        const slug = await getUniqueSlug(title);
-        const docs = documentsStream.get();
-        const index = docs.findIndex(doc => doc.title === title);
+        const index = docs.findIndex(doc => doc.filename === file.name);
+        const slug = index >= 0 ? docs[index].id : await getUniqueSlug(title);
         const now = new Date().toISOString();
 
         const newDoc = {
