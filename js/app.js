@@ -11,20 +11,20 @@ function documentListContainer(documentsStream, expandedStream = expandedCategor
 
 function settingsModal(showModalStream, themeStream = currentTheme) {
   // Retrieve the current values from localStorage or set default values
-  const githubUsername = localStorage.getItem('githubUsername') || '';
-  const githubTokenEncoded = localStorage.getItem('githubToken') || '';
-  const repoOwner = localStorage.getItem('repoOwner') || '';
-  const repoName = localStorage.getItem('repoName') || '';
-  const repoPath = localStorage.getItem('repoPath') || '';
-  const huggingFaceTokenEncoded = localStorage.getItem('huggingFaceToken') || '';
+  const storedGithubUsername = localStorage.getItem('githubUsername') || '';
+  const storedGithubTokenEncoded = localStorage.getItem('githubToken') || '';
+  const storedRepoOwner = localStorage.getItem('repoOwner') || '';
+  const storedRepoName = localStorage.getItem('repoName') || '';
+  const storedRepoPath = localStorage.getItem('repoPath') || '';
+  const storedHuggingFaceTokenEncoded = localStorage.getItem('huggingFaceToken') || '';
 
   // Streams for form data with initial values
-  const githubUsernameStream = new Stream(githubUsername);
-  const githubTokenStream = new Stream(base64Decode(githubTokenEncoded));  // Decode token to display in the form
-  const repoOwnerStream = new Stream(repoOwner);
-  const repoNameStream = new Stream(repoName);
-  const repoPathStream = new Stream(repoPath);
-  const huggingFaceTokenStream = new Stream(base64Decode(huggingFaceTokenEncoded));
+  const githubUsernameStream = new Stream(storedGithubUsername);
+  const githubTokenStream = new Stream(base64Decode(storedGithubTokenEncoded));  // Decode token to display in the form
+  const repoOwnerStream = new Stream(storedRepoOwner);
+  const repoNameStream = new Stream(storedRepoName);
+  const repoPathStream = new Stream(storedRepoPath);
+  const huggingFaceTokenStream = new Stream(base64Decode(storedHuggingFaceTokenEncoded));
 
   return conditional(showModalStream, () => {
     // Create overlay
