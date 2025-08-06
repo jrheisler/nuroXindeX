@@ -723,7 +723,12 @@ wrapper.appendChild(contentWrapper);
             td.style.border = `1px solid ${colors.border}`;
             td.style.fontFamily = fonts.base;
             td.style.color = colors.foreground;
-            td.style.whiteSpace = 'nowrap';
+            if (key === 'summary') {
+              td.style.whiteSpace = 'pre-wrap';
+              td.style.wordBreak = 'break-word';
+            } else {
+              td.style.whiteSpace = 'nowrap';
+            }
             row.appendChild(td);
           });
           tbody.appendChild(row);
