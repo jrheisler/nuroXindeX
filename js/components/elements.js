@@ -713,8 +713,22 @@ wrapper.appendChild(contentWrapper);
                 showFileHistoryModal(doc.filename, themeStream);
               });
 
+              // Delete icon
+              const deleteBtn = document.createElement('button');
+              deleteBtn.textContent = '🗑️';
+              deleteBtn.title = 'Delete Document';
+              deleteBtn.style.fontSize = '1.2rem';
+              deleteBtn.style.cursor = 'pointer';
+              deleteBtn.style.background = 'none';
+              deleteBtn.style.border = 'none';
+              deleteBtn.style.marginLeft = '0.5rem';
+              deleteBtn.addEventListener('click', () => {
+                deleteDocument(doc);
+              });
+
               td.appendChild(a);
               td.appendChild(historyBtn);
+              td.appendChild(deleteBtn);
             } else td.textContent = doc[key] ?? '';
 
 
@@ -1467,8 +1481,21 @@ function documentCard(doc, keys = ['title', 'status', 'summary', 'download'], th
         showFileHistoryModal(doc.filename, themeStream);
       });
 
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = '🗑️';
+      deleteBtn.title = 'Delete Document';
+      deleteBtn.style.cursor = 'pointer';
+      deleteBtn.style.background = 'none';
+      deleteBtn.style.border = 'none';
+      deleteBtn.style.fontSize = '1.5rem';
+      deleteBtn.style.marginLeft = '0.5rem';
+      deleteBtn.addEventListener('click', () => {
+        deleteDocument(doc);
+      });
+
       card.appendChild(link);
       card.appendChild(historyBtn);
+      card.appendChild(deleteBtn);
     } else if (key === 'title') {
       const h3 = document.createElement('h3');
       h3.textContent = doc[key] || '';

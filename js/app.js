@@ -187,6 +187,83 @@ async function ensureDirectoriesExist() {
     }
 }
 
+// Remove a document, its metadata, and update index.json on GitHub
+async function deleteDocument(doc) {
+  if (!githubToken) {
+    alert('GitHub token not found. Please set it in the settings.');
+    return;
+  }
+
+  const confirmed = await showConfirmationDialog(`Delete "${doc.filename}"?`, currentTheme);
+  if (!confirmed) return;
+
+  try {
+    const extension = doc.filename.slice(doc.filename.lastIndexOf('.'));
+    const filePath = `${repoPath}/docs/${doc.id}${extension}`;
+    const fileData = await checkIfFileExists(filePath);
+    if (fileData) {
+      await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `token ${githubToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: `Delete ${doc.filename}`,
+          sha: fileData.sha,
+        }),
+      });
+    }
+
+    const metaPath = `${repoPath}/meta/${doc.id}.json`;
+    const metaData = await checkIfFileExists(metaPath);
+    if (metaData) {
+      await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${metaPath}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `token ${githubToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: `Delete metadata for ${doc.id}`,
+          sha: metaData.sha,
+        }),
+      });
+    }
+
+    const indexPath = `${repoPath}/index.json`;
+    const indexRes = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${indexPath}`, {
+      headers: { 'Authorization': `token ${githubToken}` },
+    });
+    if (indexRes.ok) {
+      const indexData = await indexRes.json();
+      const indexSha = indexData.sha;
+      const decoded = base64Decode(indexData.content);
+      const existing = JSON.parse(decoded).filter(d => d.id !== doc.id);
+      const updatedContent = base64Encode(JSON.stringify(existing, null, 2));
+      await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${indexPath}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${githubToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: `Remove ${doc.filename} from index`,
+          content: updatedContent,
+          sha: indexSha,
+        }),
+      });
+      if (window.documentsStream) {
+        const current = window.documentsStream.get().filter(d => d.id !== doc.id);
+        window.documentsStream.set(current);
+      }
+    }
+  } catch (err) {
+    console.error('Error deleting document:', err);
+    alert('Failed to delete document.');
+  }
+}
+
 // === App entry ===
 document.addEventListener('DOMContentLoaded', async () => {
   // Retrieve values from localStorage
@@ -208,6 +285,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Streams
   const documentsStream = new Stream([]);
+  window.documentsStream = documentsStream;
   const showFormStream = new Stream(false);
   const knownCategoriesStream = derived(documentsStream, docs => {
     const set = new Set(docs.map(doc => doc.category?.trim()).filter(Boolean));
