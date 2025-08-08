@@ -2,6 +2,14 @@
 const headerTitleStream = new Stream("Documents");
 const expandedCategories = new Stream({});
 
+// Simple system user check using localStorage or external hook
+function isSystemUser() {
+  if (typeof window.isSystemUser === 'function') {
+    return window.isSystemUser();
+  }
+  return localStorage.getItem('systemUser') === 'true';
+}
+
 // === Document grid container ===
 function documentListContainer(documentsStream, expandedStream = expandedCategories, themeStream = currentTheme, keys = ['title', 'status', 'meta', 'summary', 'filename', 'lastUpdated', 'download']) {
   return container([
@@ -63,54 +71,115 @@ function settingsModal(showModalStream, themeStream = currentTheme) {
     closeBtn.addEventListener('click', () => showModalStream.set(false));
     modal.appendChild(closeBtn);
 
-    // Create form inputs
+    // Helper to build labeled fields
+    const labeledField = (labelText, inputEl, extra) => {
+      const label = reactiveText(new Stream(labelText), { tag: 'label', margin: '0 0 0.25rem 0' }, themeStream);
+      const content = extra
+        ? row([inputEl, extra], { gap: '0.5rem', align: 'center' }, themeStream)
+        : inputEl;
+      return column([label, content], { margin: '0.5rem 0', gap: '0.25rem' }, themeStream);
+    };
+
+    // GitHub Username
+    const githubUsernameInput = editText(githubUsernameStream, { margin: '0' }, themeStream);
+    const githubUsernameField = labeledField('GitHub Username', githubUsernameInput);
+
+    // GitHub Token with mask/unmask
+    const githubTokenInput = editText(githubTokenStream, { margin: '0', type: 'text' }, themeStream);
+    if (githubTokenStream.get()) githubTokenInput.value = '****';
+    const githubTokenToggleLabel = new Stream('Show');
+    const githubTokenField = labeledField('GitHub Token', githubTokenInput,
+      reactiveButton(githubTokenToggleLabel, () => {
+        if (!isSystemUser()) return;
+        if (githubTokenInput.value === '****') {
+          githubTokenInput.value = githubTokenStream.get();
+          githubTokenToggleLabel.set('Hide');
+        } else {
+          githubTokenInput.value = githubTokenStream.get() ? '****' : '';
+          githubTokenToggleLabel.set('Show');
+        }
+      }, { size: '0.8rem', padding: '0.2rem 0.5rem', margin: '0', rounded: true }, themeStream)
+    );
+
+    // Repository Owner
+    const repoOwnerInput = editText(repoOwnerStream, { margin: '0' }, themeStream);
+    const repoOwnerField = labeledField('Repository Owner', repoOwnerInput);
+
+    // Repository Name
+    const repoNameInput = editText(repoNameStream, { margin: '0' }, themeStream);
+    const repoNameField = labeledField('Repository Name', repoNameInput);
+
+    // Repository Path
+    const repoPathInput = editText(repoPathStream, { margin: '0' }, themeStream);
+    const repoPathField = labeledField('Repository Path', repoPathInput);
+
+    // Hugging Face Token with mask/unmask
+    const huggingFaceTokenInput = editText(huggingFaceTokenStream, { margin: '0', type: 'text' }, themeStream);
+    if (huggingFaceTokenStream.get()) huggingFaceTokenInput.value = '****';
+    const hfToggleLabel = new Stream('Show');
+    const huggingFaceTokenField = labeledField('Hugging Face Token', huggingFaceTokenInput,
+      reactiveButton(hfToggleLabel, () => {
+        if (!isSystemUser()) return;
+        if (huggingFaceTokenInput.value === '****') {
+          huggingFaceTokenInput.value = huggingFaceTokenStream.get();
+          hfToggleLabel.set('Hide');
+        } else {
+          huggingFaceTokenInput.value = huggingFaceTokenStream.get() ? '****' : '';
+          hfToggleLabel.set('Show');
+        }
+      }, { size: '0.8rem', padding: '0.2rem 0.5rem', margin: '0', rounded: true }, themeStream)
+    );
+
+    // Save button
+    const saveButton = (() => {
+      const isSaving = new Stream(false);
+      const saveLabel = derived(isSaving, val => val ? "Saving..." : "Save");
+
+      return reactiveButton(saveLabel, async () => {
+        if (isSaving.get()) return;
+        isSaving.set(true);
+
+        // Update global variables with current form values
+        githubUsername = githubUsernameStream.get();
+        githubToken = githubTokenStream.get();
+        repoOwner = repoOwnerStream.get();
+        repoName = repoNameStream.get();
+        repoPath = repoPathStream.get();
+        huggingFaceToken = huggingFaceTokenStream.get();
+
+        // Encode tokens before saving to localStorage
+        githubTokenEncoded = base64Encode(githubToken);
+        huggingFaceTokenEncoded = base64Encode(huggingFaceToken);
+
+        // Persist settings
+        localStorage.setItem('githubUsername', githubUsername);
+        localStorage.setItem('githubToken', githubTokenEncoded);
+        localStorage.setItem('repoOwner', repoOwner);
+        localStorage.setItem('repoName', repoName);
+        localStorage.setItem('repoPath', repoPath);
+        localStorage.setItem('huggingFaceToken', huggingFaceTokenEncoded);
+
+        // Ensure repository directories exist for new settings
+        try {
+          await ensureDirectoriesExist();
+        } catch (err) {
+          console.error('Failed to ensure directories:', err);
+        }
+
+        // Close modal after saving
+        showModalStream.set(false);
+        isSaving.set(false);
+      }, { margin: '0.5rem 0', rounded: true }, themeStream);
+    })();
+
     const content = container([
-      editText(githubUsernameStream, { placeholder: 'GitHub Username', margin: '0.5rem 0' }, themeStream),
-      editText(githubTokenStream, { placeholder: 'GitHub Token', margin: '0.5rem 0', type: 'password' }, themeStream),
-      editText(repoOwnerStream, { placeholder: 'Repository Owner', margin: '0.5rem 0' }, themeStream),
-      editText(repoNameStream, { placeholder: 'Repository Name', margin: '0.5rem 0' }, themeStream),
-      editText(repoPathStream, { placeholder: 'Repository Path', margin: '0.5rem 0' }, themeStream),
-      editText(huggingFaceTokenStream, { placeholder: 'Hugging Face Token', margin: '0.5rem 0', type: 'password' }, themeStream),
-      (() => {
-        const isSaving = new Stream(false);
-        const saveLabel = derived(isSaving, val => val ? "Saving..." : "Save");
-
-        return reactiveButton(saveLabel, async () => {
-          if (isSaving.get()) return;
-          isSaving.set(true);
-
-          // Update global variables with current form values
-          githubUsername = githubUsernameStream.get();
-          githubToken = githubTokenStream.get();
-          repoOwner = repoOwnerStream.get();
-          repoName = repoNameStream.get();
-          repoPath = repoPathStream.get();
-          huggingFaceToken = huggingFaceTokenStream.get();
-
-          // Encode tokens before saving to localStorage
-          githubTokenEncoded = base64Encode(githubToken);
-          huggingFaceTokenEncoded = base64Encode(huggingFaceToken);
-
-          // Persist settings
-          localStorage.setItem('githubUsername', githubUsername);
-          localStorage.setItem('githubToken', githubTokenEncoded);
-          localStorage.setItem('repoOwner', repoOwner);
-          localStorage.setItem('repoName', repoName);
-          localStorage.setItem('repoPath', repoPath);
-          localStorage.setItem('huggingFaceToken', huggingFaceTokenEncoded);
-
-          // Ensure repository directories exist for new settings
-          try {
-            await ensureDirectoriesExist();
-          } catch (err) {
-            console.error('Failed to ensure directories:', err);
-          }
-
-          // Close modal after saving
-          showModalStream.set(false);
-          isSaving.set(false);
-        }, { margin: '0.5rem 0', rounded: true }, themeStream);
-      })()
+      githubUsernameField,
+      githubTokenField,
+      repoOwnerField,
+      repoNameField,
+      repoPathField,
+      huggingFaceTokenField,
+      saveButton
     ], {});
 
     modal.appendChild(content);
