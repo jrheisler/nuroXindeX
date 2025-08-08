@@ -4,7 +4,7 @@ const expandedCategories = new Stream({});
 
 // Simple system user check using localStorage or external hook
 function isSystemUser() {
-  if (typeof window.isSystemUser === 'function') {
+  if (typeof window.isSystemUser === 'function' && window.isSystemUser !== isSystemUser) {
     return window.isSystemUser();
   }
   return localStorage.getItem('systemUser') === 'true';
