@@ -2,13 +2,6 @@
 const headerTitleStream = new Stream("Documents");
 const expandedCategories = new Stream({});
 
-// Simple system user check using localStorage or external hook
-function isSystemUser() {
-  if (typeof window.isSystemUser === 'function' && window.isSystemUser !== isSystemUser) {
-    return window.isSystemUser();
-  }
-  return localStorage.getItem('systemUser') === 'true';
-}
 
 // === Document grid container ===
 function documentListContainer(documentsStream, expandedStream = expandedCategories, themeStream = currentTheme, keys = ['title', 'status', 'meta', 'summary', 'filename', 'lastUpdated', 'download']) {
@@ -90,7 +83,6 @@ function settingsModal(showModalStream, themeStream = currentTheme) {
     const githubTokenToggleLabel = new Stream('Show');
     const githubTokenField = labeledField('GitHub Token', githubTokenInput,
       reactiveButton(githubTokenToggleLabel, () => {
-        if (!isSystemUser()) return;
         if (githubTokenInput.value === '****') {
           githubTokenInput.value = githubTokenStream.get();
           githubTokenToggleLabel.set('Hide');
@@ -119,7 +111,6 @@ function settingsModal(showModalStream, themeStream = currentTheme) {
     const hfToggleLabel = new Stream('Show');
     const huggingFaceTokenField = labeledField('Hugging Face Token', huggingFaceTokenInput,
       reactiveButton(hfToggleLabel, () => {
-        if (!isSystemUser()) return;
         if (huggingFaceTokenInput.value === '****') {
           huggingFaceTokenInput.value = huggingFaceTokenStream.get();
           hfToggleLabel.set('Hide');
