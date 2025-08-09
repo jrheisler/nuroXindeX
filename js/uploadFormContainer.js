@@ -107,7 +107,10 @@ async function extractTextFromFile(file) {
         file.type === 'application/msword') {
         return await extractTextFromDoc(file);
     }
-    return await file.text();
+    if (file.type.startsWith('text/')) {
+        return await file.text();
+    }
+    return '';
 }
 
 // Trigger the enrichment pipeline while reporting stage via statusStream
@@ -116,12 +119,16 @@ async function triggerEnrichmentPipeline(file, statusStream) {
     try {
         if (statusStream) statusStream.set('extracting');
         const text = await extractTextFromFile(file);
+        if (!text.trim()) {
+            if (statusStream) statusStream.set('');
+            return '';
+        }
         if (statusStream) statusStream.set('summarizing');
         return await summarizeText(text.slice(0, 3000));
     } catch (err) {
-        showToast('Enrichment pipeline failed', { type: 'error' });
+        console.warn('Enrichment pipeline failed, continuing without summary:', err);
         if (statusStream) statusStream.set('');
-        throw err;
+        return '';
     }
 }
 
