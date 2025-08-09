@@ -238,13 +238,21 @@ async function checkIfFileExists(filePath) {
   }
 }
 
+// Join path segments while safely handling leading/trailing slashes
+function joinPath(...segments) {
+  return segments
+    .filter(Boolean)
+    .map(seg => seg.split('/').filter(Boolean).join('/'))
+    .join('/');
+}
+
 async function ensureDirectoriesExist() {
     if (!githubToken) {
         throw new Error("GitHub token not found. Please set it in the settings.");
     }
     const dirs = ['docs', 'meta'];
     for (const dir of dirs) {
-        const path = `${repoPath}/${dir}/.gitkeep`;
+        const path = joinPath(repoPath, dir, '.gitkeep');
         const fileExists = await checkIfFileExists(path);
         if (!fileExists) {
             console.log(`Directory ${dir} does not exist. Creating...`);
@@ -276,7 +284,7 @@ async function deleteDocument(doc) {
 
   try {
     const extension = doc.filename.slice(doc.filename.lastIndexOf('.'));
-    const filePath = `${repoPath}/docs/${doc.id}${extension}`;
+    const filePath = joinPath(repoPath, 'docs', `${doc.id}${extension}`);
     const fileData = await checkIfFileExists(filePath);
     if (fileData) {
       await fetchWithRetry(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
@@ -292,7 +300,7 @@ async function deleteDocument(doc) {
       });
     }
 
-    const metaPath = `${repoPath}/meta/${doc.id}.json`;
+    const metaPath = joinPath(repoPath, 'meta', `${doc.id}.json`);
     const metaData = await checkIfFileExists(metaPath);
     if (metaData) {
       await fetchWithRetry(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${metaPath}`, {
@@ -308,7 +316,7 @@ async function deleteDocument(doc) {
       });
     }
 
-    const indexPath = `${repoPath}/index.json`;
+    const indexPath = joinPath(repoPath, 'index.json');
     const indexRes = await fetchWithRetry(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${indexPath}`, {
       headers: { 'Authorization': `token ${githubToken}` },
     });
