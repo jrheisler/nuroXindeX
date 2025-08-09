@@ -23,6 +23,13 @@ function srOnly(text) {
   return span;
 }
 
+// Determine if a file can be previewed directly in the browser
+function isPreviewable(filename) {
+  const ext = filename.split('.').pop().toLowerCase();
+  const previewable = ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'txt', 'svg'];
+  return previewable.includes(ext);
+}
+
 function reactiveElement(stream, renderFn = v => v) {
   const placeholder = document.createElement('div');
 
@@ -710,18 +717,25 @@ wrapper.appendChild(contentWrapper);
           keys.forEach(key => {
             const td = document.createElement('td');
             if (key === 'download') {
-              // Download icon
+              // Download/Open icon depending on file type
               const a = document.createElement('a');
               a.href = doc.url;
-              a.download = doc.filename;
-              const downloadLabel = `Download ${doc.filename}`;
-              a.title = downloadLabel;
-              a.setAttribute('aria-label', downloadLabel);
-              const downloadIcon = document.createElement('span');
-              downloadIcon.textContent = '⬇️';
-              downloadIcon.setAttribute('aria-hidden', 'true');
-              a.appendChild(downloadIcon);
-              a.appendChild(srOnly(downloadLabel));
+              const previewable = isPreviewable(doc.filename);
+              const labelAction = previewable ? 'Open' : 'Download';
+              const label = `${labelAction} ${doc.filename}`;
+              if (previewable) {
+                a.target = '_blank';
+                a.rel = 'noopener noreferrer';
+              } else {
+                a.download = doc.filename;
+              }
+              a.title = label;
+              a.setAttribute('aria-label', label);
+              const icon = document.createElement('span');
+              icon.textContent = previewable ? '↗️' : '⬇️';
+              icon.setAttribute('aria-hidden', 'true');
+              a.appendChild(icon);
+              a.appendChild(srOnly(label));
               a.style.marginRight = '0.5rem';
               a.style.textDecoration = 'none';
               a.style.fontSize = '1.2rem';
@@ -1027,8 +1041,13 @@ async function showFileHistoryModal(filename, themeStream = currentTheme) {
       const link = document.createElement('a');
       link.textContent = `${commit.commit.author.date} — ${commit.commit.message}`;
       link.href = `https://raw.githubusercontent.com/${repoOwner}/${repoName}/${commit.sha}/${repoPath}/${filename}`;
-      link.target = '_blank';
-      link.download = filename;
+      const previewable = isPreviewable(filename);
+      if (previewable) {
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+      } else {
+        link.download = filename;
+      }
       link.style.textDecoration = 'none';
       link.style.cursor = 'pointer';
 
@@ -1498,15 +1517,22 @@ function documentCard(doc, keys = ['title', 'status', 'summary', 'download'], th
     if (key === 'download') {
       const link = document.createElement('a');
       link.href = doc.url;
-      link.download = doc.filename;
-      const downloadLabel = `Download ${doc.filename}`;
-      link.title = downloadLabel;
-      link.setAttribute('aria-label', downloadLabel);
+      const previewable = isPreviewable(doc.filename);
+      const labelAction = previewable ? 'Open' : 'Download';
+      const label = `${labelAction} ${doc.filename}`;
+      if (previewable) {
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+      } else {
+        link.download = doc.filename;
+      }
+      link.title = label;
+      link.setAttribute('aria-label', label);
       const linkIcon = document.createElement('span');
-      linkIcon.textContent = '⬇️';
+      linkIcon.textContent = previewable ? '↗️' : '⬇️';
       linkIcon.setAttribute('aria-hidden', 'true');
       link.appendChild(linkIcon);
-      link.appendChild(srOnly(downloadLabel));
+      link.appendChild(srOnly(label));
       link.style.display = 'inline-block';
       link.style.marginTop = '0.5rem';
       link.style.marginRight = '0.5rem';
