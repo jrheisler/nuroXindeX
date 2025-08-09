@@ -1,28 +1,23 @@
+// Retrieve values from localStorage
 var githubUsername = '';
+var githubTokenEncoded = '';
 var githubToken = '';
 var repoOwner = '';
 var repoName = '';
 var repoPath = '';
+var huggingFaceTokenEncoded = '';
 var huggingFaceToken = '';
 
-async function fetchAuthTokens() {
 
-  try {
-    const response = await fetch('/api/tokens');
-    if (!response.ok) throw new Error('Failed to retrieve auth tokens');
-    const data = await response.json();
-    githubUsername = data.githubUsername || '';
-    githubToken = data.githubToken || '';
-    repoOwner = data.repoOwner || '';
-    repoName = data.repoName || '';
-    repoPath = data.repoPath || '';
-    huggingFaceToken = data.huggingFaceToken || '';
-  } catch (err) {
-    console.error('Error fetching auth tokens:', err);
-  }
+// Base64 encode function (obfuscation)
+function base64Encode(str) {
+  return btoa(unescape(encodeURIComponent(str)));
 }
 
-fetchAuthTokens();
+// Base64 decode function (deobfuscation)
+function base64Decode(str) {
+  return decodeURIComponent(escape(atob(str)));
+}
 
 // === Hugging Face summarization ===
 async function summarizeText(text) {
@@ -125,7 +120,7 @@ async function createMetadataFile(slug, title, filePath, summary) {
         summary: summary || "",
     };
     console.log("Creating metadata file with:", metadata);
-    const metadataContent = btoa(JSON.stringify(metadata, null, 2));
+    const metadataContent = base64Encode(JSON.stringify(metadata, null, 2));
     const metadataFilePath = `${repoPath}/meta/${slug}.json`;
 
     await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${metadataFilePath}`, {
@@ -154,7 +149,7 @@ async function fetchDocumentIndexFromGitHub() {
   }
 
   const result = await response.json();
-  const decodedContent = atob(result.content);
+  const decodedContent = base64Decode(result.content);
   const index = JSON.parse(decodedContent);
 
   // Enrich each document with its summary from meta files
@@ -168,7 +163,7 @@ async function fetchDocumentIndexFromGitHub() {
       });
       if (metaResponse.ok) {
         const metaResult = await metaResponse.json();
-        const metaDecoded = atob(metaResult.content);
+        const metaDecoded = base64Decode(metaResult.content);
         const metaData = JSON.parse(metaDecoded);
         doc.summary = metaData.summary || '';
       } else {
@@ -194,7 +189,7 @@ async function fetchDocumentIndex() {
   });
   const data = await response.json();
   if (data.content) {
-    const decodedData = atob(data.content);  // Decoding from base64
+    const decodedData = base64Decode(data.content);  // Decoding from base64
     return JSON.parse(decodedData);
   }
   return [];
@@ -298,7 +293,7 @@ async function updateDocumentIndex(newDoc) {
     if (response.ok) {
       const data = await response.json();
       sha = data.sha; // Required for updating
-      const decoded = atob(data.content);
+      const decoded = base64Decode(data.content);
       existingIndex = JSON.parse(decoded);
     }
   } catch (err) {
@@ -314,7 +309,7 @@ async function updateDocumentIndex(newDoc) {
   }
 
   // Step 3: Upload updated index
-  const updatedContent = btoa(JSON.stringify(existingIndex, null, 2));
+  const updatedContent = base64Encode(JSON.stringify(existingIndex, null, 2));
 
   const putResponse = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
     method: 'PUT',
