@@ -178,13 +178,16 @@ function applyTheme(el, options = {}) {
     el.style.padding = padding;
     el.style.margin = margin;
     el.style.borderRadius = borderRadius;
-    el.style.fontFamily = theme.font;
+    el.style.fontFamily = theme.fonts.base;
     el.style.border = 'none';
 
     // 🔁 Also update body styles (global background/text)
     document.body.style.backgroundColor = theme.background;
     document.body.style.color = theme.foreground;
-    document.body.style.fontFamily = theme.font;
+    document.body.style.fontFamily = theme.fonts.base;
+    document.querySelectorAll('code, pre').forEach(codeEl => {
+      codeEl.style.fontFamily = theme.fonts.monospace;
+    });
     document.body.style.transition = 'background-color 0.3s, color 0.3s';
   });
 }
@@ -272,6 +275,10 @@ function applyThemeToPage(theme, container = document.body) {
   container.style.color = colors.foreground || '#000000';
   container.style.fontFamily = fonts.base || 'sans-serif';
   container.style.transition = 'background-color 0.3s ease, color 0.3s ease';
+
+  container.querySelectorAll('code, pre').forEach(codeEl => {
+    codeEl.style.fontFamily = fonts.monospace || 'monospace';
+  });
 
   // Optional: smooth font weight rendering
   container.style.webkitFontSmoothing = 'antialiased';
