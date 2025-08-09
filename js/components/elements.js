@@ -1045,7 +1045,7 @@ async function showFileHistoryModal(filename, themeStream = currentTheme) {
     const error = document.createElement('p');
     error.textContent = 'Error fetching history.';
     dialog.insertBefore(error, list);
-    console.error(err);
+    showToast('Error fetching history', { type: 'error' });
   }
 }
 

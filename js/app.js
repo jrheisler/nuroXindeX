@@ -154,7 +154,9 @@ function settingsModal(showModalStream, themeStream = currentTheme) {
         try {
           await ensureDirectoriesExist();
         } catch (err) {
-          console.error('Failed to ensure directories:', err);
+          showToast('Failed to ensure directories', { type: 'error' });
+          isSaving.set(false);
+          return;
         }
 
         // Close modal after saving
@@ -202,7 +204,7 @@ function settingsModal(showModalStream, themeStream = currentTheme) {
 
 // Function to check if the file already exists in the GitHub repository
 async function checkIfFileExists(filePath) {
-  const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
+  const response = await fetchWithRetry(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
     method: 'GET',
     headers: {
       'Authorization': `token ${githubToken}`,
@@ -216,8 +218,8 @@ async function checkIfFileExists(filePath) {
     return null; // File doesn't exist
   } else {
     const errorData = await response.json();
-    console.error("Error checking file:", errorData);
-    throw new Error("Error checking file existence");
+    showToast('Error checking file', { type: 'error' });
+    throw new Error('Error checking file existence');
   }
 }
 
@@ -232,7 +234,7 @@ async function ensureDirectoriesExist() {
         if (!fileExists) {
             console.log(`Directory ${dir} does not exist. Creating...`);
             const emptyContent = btoa('');
-            await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${path}`, {
+            await fetchWithRetry(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${path}`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `token ${githubToken}`,
@@ -262,7 +264,7 @@ async function deleteDocument(doc) {
     const filePath = `${repoPath}/docs/${doc.id}${extension}`;
     const fileData = await checkIfFileExists(filePath);
     if (fileData) {
-      await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
+      await fetchWithRetry(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `token ${githubToken}`,
@@ -278,7 +280,7 @@ async function deleteDocument(doc) {
     const metaPath = `${repoPath}/meta/${doc.id}.json`;
     const metaData = await checkIfFileExists(metaPath);
     if (metaData) {
-      await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${metaPath}`, {
+      await fetchWithRetry(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${metaPath}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `token ${githubToken}`,
@@ -292,7 +294,7 @@ async function deleteDocument(doc) {
     }
 
     const indexPath = `${repoPath}/index.json`;
-    const indexRes = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${indexPath}`, {
+    const indexRes = await fetchWithRetry(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${indexPath}`, {
       headers: { 'Authorization': `token ${githubToken}` },
     });
     if (indexRes.ok) {
@@ -301,7 +303,7 @@ async function deleteDocument(doc) {
       const decoded = base64Decode(indexData.content);
       const existing = JSON.parse(decoded).filter(d => d.id !== doc.id);
       const updatedContent = base64Encode(JSON.stringify(existing, null, 2));
-      await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${indexPath}`, {
+      await fetchWithRetry(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${indexPath}`, {
         method: 'PUT',
         headers: {
           'Authorization': `token ${githubToken}`,
@@ -319,8 +321,7 @@ async function deleteDocument(doc) {
       }
     }
   } catch (err) {
-    console.error('Error deleting document:', err);
-    alert('Failed to delete document.');
+    showToast('Error deleting document', { type: 'error' });
   }
 }
 
@@ -337,7 +338,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   githubToken = base64Decode(githubTokenEncoded);
   huggingFaceToken = base64Decode(huggingFaceTokenEncoded || '');
 
-  await ensureDirectoriesExist();
+  try {
+    await ensureDirectoriesExist();
+  } catch (err) {
+    showToast('Failed to ensure repository directories', { type: 'error' });
+  }
 
 
   // Apply theme

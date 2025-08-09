@@ -19,31 +19,59 @@ function base64Decode(str) {
   return decodeURIComponent(escape(atob(str)));
 }
 
+// Generic fetch with retry for transient network errors
+async function fetchWithRetry(url, options = {}, retries = 3, backoff = 500) {
+  let lastError;
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, options);
+      if (res.ok || res.status < 500) return res;
+      lastError = new Error(`HTTP ${res.status}`);
+    } catch (err) {
+      lastError = err;
+    }
+    if (attempt < retries) {
+      await new Promise(r => setTimeout(r, backoff * attempt));
+    }
+  }
+  throw lastError;
+}
+
 // === Hugging Face summarization ===
 async function summarizeText(text) {
     if (!huggingFaceToken) {
         console.warn('Hugging Face token not set; skipping summary');
         return '';
     }
-    try {
-        // Using Hugging Face's BART model via summarization pipeline
-        const response = await fetch('https://api-inference.huggingface.co/models/facebook/bart-large-cnn', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${huggingFaceToken}`
-            },
-            body: JSON.stringify({ inputs: text })
-        });
-        if (!response.ok) {
-            console.error('Summarization API error:', await response.text());
-            return '';
+    const url = 'https://api-inference.huggingface.co/models/facebook/bart-large-cnn';
+    const options = {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${huggingFaceToken}`
+        },
+        body: JSON.stringify({ inputs: text })
+    };
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+            const response = await fetch(url, options);
+            if (!response.ok) {
+                const msg = await response.text();
+                if (attempt === 3) {
+                    showToast(`Summarization API error: ${msg}`, { type: 'error' });
+                    throw new Error(msg);
+                }
+            } else {
+                const data = await response.json();
+                return Array.isArray(data) && data[0] && data[0].summary_text ? data[0].summary_text : '';
+            }
+        } catch (err) {
+            if (attempt === 3) {
+                showToast('Error generating summary', { type: 'error' });
+                throw err;
+            }
         }
-        const data = await response.json();
-        return Array.isArray(data) && data[0] && data[0].summary_text ? data[0].summary_text : '';
-    } catch (err) {
-        console.error('Error generating summary:', err);
-        return '';
+        await new Promise(r => setTimeout(r, 500 * attempt));
     }
 }
 
@@ -66,8 +94,8 @@ async function extractTextFromDoc(file) {
         const result = await mammoth.extractRawText({ arrayBuffer });
         return result.value;
     } catch (err) {
-        console.error('DOC extraction failed:', err);
-        return '';
+        showToast('DOC extraction failed', { type: 'error' });
+        throw err;
     }
 }
 
@@ -91,9 +119,9 @@ async function triggerEnrichmentPipeline(file, statusStream) {
         if (statusStream) statusStream.set('summarizing');
         return await summarizeText(text.slice(0, 3000));
     } catch (err) {
-        console.error('Enrichment pipeline failed:', err);
+        showToast('Enrichment pipeline failed', { type: 'error' });
         if (statusStream) statusStream.set('');
-        return '';
+        throw err;
     }
 }
 
@@ -137,15 +165,15 @@ async function createMetadataFile(slug, title, filePath, summary) {
 }
 
 async function fetchDocumentIndexFromGitHub() {
-  const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${repoPath}/index.json`, {
+  const response = await fetchWithRetry(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${repoPath}/index.json`, {
     headers: {
       'Authorization': `token ${githubToken}`
     }
   });
 
   if (!response.ok) {
-    console.error("Failed to fetch index.json:", await response.text());
-    throw new Error("Unable to fetch document index from GitHub.");
+    showToast('Failed to fetch index.json', { type: 'error' });
+    throw new Error('Unable to fetch document index from GitHub.');
   }
 
   const result = await response.json();
@@ -156,7 +184,7 @@ async function fetchDocumentIndexFromGitHub() {
   const enriched = await Promise.all(index.map(async doc => {
     const metaPath = `${repoPath}/meta/${doc.id}.json`;
     try {
-      const metaResponse = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${metaPath}`, {
+      const metaResponse = await fetchWithRetry(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${metaPath}`, {
         headers: {
           'Authorization': `token ${githubToken}`
         }
@@ -170,7 +198,7 @@ async function fetchDocumentIndexFromGitHub() {
         doc.summary = '';
       }
     } catch (err) {
-      console.error(`Failed to fetch meta for ${doc.id}:`, err);
+      showToast(`Failed to fetch meta for ${doc.id}`, { type: 'error' });
       doc.summary = '';
     }
     return doc;
@@ -201,64 +229,67 @@ async function uploadFileToGitHub(file, slug, onProgress) {
   const base64Content = await getBase64(file); // Get the Base64 string of the file
   const extension = file.name.slice(file.name.lastIndexOf('.'));
   const filePath = `${repoPath}/docs/${slug}${extension}`;
+  const maxAttempts = 3;
 
-  try {
-    // Check if the file already exists to get the sha for updates
-    const fileExists = await checkIfFileExists(filePath);
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      // Check if the file already exists to get the sha for updates
+      const fileExists = await checkIfFileExists(filePath);
 
-    let sha = null;
-    if (fileExists) {
-      // If the file exists, get the current file's sha
-      sha = fileExists.sha;
-    }
+      let sha = null;
+      if (fileExists) {
+        sha = fileExists.sha; // Required for updates
+      }
 
-    const payload = JSON.stringify({
-      message: `Upload document: ${file.name}`,
-      content: base64Content, // Base64 encoded file content
-      ...(sha && { sha }) // Add sha for existing files
-    });
+      const payload = JSON.stringify({
+        message: `Upload document: ${file.name}`,
+        content: base64Content,
+        ...(sha && { sha })
+      });
 
-    // Use XMLHttpRequest to allow progress tracking
-    const xhr = new XMLHttpRequest();
-    const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
-    xhr.open('PUT', url);
-    xhr.setRequestHeader('Authorization', `token ${githubToken}`);
-    xhr.setRequestHeader('Content-Type', 'application/json');
+      const xhr = new XMLHttpRequest();
+      const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
+      xhr.open('PUT', url);
+      xhr.setRequestHeader('Authorization', `token ${githubToken}`);
+      xhr.setRequestHeader('Content-Type', 'application/json');
 
-    if (xhr.upload && onProgress) {
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          onProgress(e.loaded, e.total);
-        }
-      };
-    }
-
-    return await new Promise((resolve, reject) => {
-      xhr.onerror = () => reject(new Error('Network error while uploading file'));
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const data = JSON.parse(xhr.responseText);
-            resolve(data.content.download_url);
-          } catch (err) {
-            reject(err);
+      if (xhr.upload && onProgress) {
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            onProgress(e.loaded, e.total);
           }
-        } else {
-          let message = xhr.statusText;
-          try {
-            const errorData = JSON.parse(xhr.responseText);
-            message = errorData.message || message;
-          } catch (e) { /* ignore */ }
-          console.error("Error uploading file:", message);
-          reject(new Error(`GitHub API Error: ${message}`));
-        }
-      };
+        };
+      }
 
-      xhr.send(payload);
-    });
-  } catch (error) {
-    console.error("Error in uploadFileToGitHub:", error); // Log the full error
-    throw error;
+      return await new Promise((resolve, reject) => {
+        xhr.onerror = () => reject(new Error('Network error while uploading file'));
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              resolve(data.content.download_url);
+            } catch (err) {
+              reject(err);
+            }
+          } else {
+            let message = xhr.statusText;
+            try {
+              const errorData = JSON.parse(xhr.responseText);
+              message = errorData.message || message;
+            } catch (e) { /* ignore */ }
+            reject(new Error(`GitHub API Error: ${message}`));
+          }
+        };
+
+        xhr.send(payload);
+      });
+    } catch (error) {
+      if (attempt === maxAttempts) {
+        showToast('Error uploading file', { type: 'error' });
+        throw error;
+      }
+      await new Promise(r => setTimeout(r, 500 * attempt));
+    }
   }
 }
 
@@ -284,7 +315,7 @@ async function updateDocumentIndex(newDoc) {
 
   // Step 1: Try to fetch the current index and sha
   try {
-    const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
+    const response = await fetchWithRetry(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
       headers: {
         'Authorization': `token ${githubToken}`
       }
@@ -311,7 +342,7 @@ async function updateDocumentIndex(newDoc) {
   // Step 3: Upload updated index
   const updatedContent = base64Encode(JSON.stringify(existingIndex, null, 2));
 
-  const putResponse = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
+  const putResponse = await fetchWithRetry(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
     method: 'PUT',
     headers: {
       'Authorization': `token ${githubToken}`,
@@ -326,8 +357,8 @@ async function updateDocumentIndex(newDoc) {
 
   if (!putResponse.ok) {
     const error = await putResponse.json();
-    console.error("Error updating index:", error);
-    throw new Error("Failed to update index.json");
+    showToast('Error updating index', { type: 'error' });
+    throw new Error('Failed to update index.json');
   }
 }
 
@@ -530,7 +561,7 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
           showFormStream.set(false);
         } catch (err) {
           statusStream.set('');
-          alert("Error uploading document: " + err.message);
+          showToast('Error uploading document: ' + err.message, { type: 'error' });
         } finally {
           isSaving.set(false);
           statusStream.set('');
