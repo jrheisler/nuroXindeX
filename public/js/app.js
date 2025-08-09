@@ -202,6 +202,21 @@ function settingsModal(showModalStream, themeStream = currentTheme) {
   });
 }
 
+// Simple fetch helper that retries on network failure
+async function fetchWithRetry(url, options = {}, retries = 3, backoff = 500) {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      if (response.ok || attempt === retries - 1) {
+        return response;
+      }
+    } catch (err) {
+      if (attempt === retries - 1) throw err;
+    }
+    await new Promise(res => setTimeout(res, backoff * Math.pow(2, attempt)));
+  }
+}
+
 // Function to check if the file already exists in the GitHub repository
 async function checkIfFileExists(filePath) {
   const response = await fetchWithRetry(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
@@ -335,15 +350,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   repoPath = localStorage.getItem('repoPath');
   huggingFaceTokenEncoded = localStorage.getItem('huggingFaceToken');
 
-  githubToken = base64Decode(githubTokenEncoded);
+  githubToken = base64Decode(githubTokenEncoded || '');
   huggingFaceToken = base64Decode(huggingFaceTokenEncoded || '');
 
-  try {
-    await ensureDirectoriesExist();
-  } catch (err) {
-    showToast('Failed to ensure repository directories', { type: 'error' });
-  }
+  const repoConfigured = githubToken && repoOwner && repoName && repoPath;
+  const showModalStream = new Stream(!repoConfigured);
 
+  if (repoConfigured) {
+    try {
+      await ensureDirectoriesExist();
+    } catch (err) {
+      showToast('Failed to ensure repository directories', { type: 'error' });
+      showModalStream.set(true);
+    }
+  }
 
   // Apply theme
   currentTheme.subscribe(theme => applyThemeToPage(theme));
@@ -358,15 +378,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // 🟡 Fetch index.json and hydrate the stream
-  try {
-    const indexData = await fetchDocumentIndexFromGitHub();
-    documentsStream.set(indexData); // Hydrate the grid with document metadata
-  } catch (err) {
-    console.warn("Using empty index as fallback.");
-    documentsStream.set([]); // Fallback: start with empty list
+  if (repoConfigured) {
+    try {
+      const indexData = await fetchDocumentIndexFromGitHub();
+      documentsStream.set(indexData); // Hydrate the grid with document metadata
+    } catch (err) {
+      console.warn("Using empty index as fallback.");
+      documentsStream.set([]); // Fallback: start with empty list
+      showModalStream.set(true);
+    }
+  } else {
+    documentsStream.set([]);
   }
 
-  const showModalStream = new Stream(false);
   const userAvatarStream = new Stream('doc.webp');
   const userAvatar = avatarDropdown(
     userAvatarStream,
