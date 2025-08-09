@@ -6,6 +6,7 @@ var repoPath = '';
 var huggingFaceToken = '';
 
 async function fetchAuthTokens() {
+
   try {
     const response = await fetch('/api/tokens');
     if (!response.ok) throw new Error('Failed to retrieve auth tokens');
