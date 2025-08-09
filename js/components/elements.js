@@ -8,6 +8,21 @@ function keyToTitle(key) {
     .replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1));
 }
 
+function srOnly(text) {
+  const span = document.createElement('span');
+  span.textContent = text;
+  span.style.position = 'absolute';
+  span.style.width = '1px';
+  span.style.height = '1px';
+  span.style.padding = '0';
+  span.style.margin = '-1px';
+  span.style.overflow = 'hidden';
+  span.style.clip = 'rect(0 0 0 0)';
+  span.style.whiteSpace = 'nowrap';
+  span.style.border = '0';
+  return span;
+}
+
 function reactiveElement(stream, renderFn = v => v) {
   const placeholder = document.createElement('div');
 
@@ -555,8 +570,13 @@ const getAllCategories = () => {
 
 const iconButton = (label, onClick, tooltip) => {
   const btn = document.createElement('button');
-  btn.innerHTML = label; // icon SVG or symbol
+  const iconSpan = document.createElement('span');
+  iconSpan.innerHTML = label; // icon SVG or symbol
+  iconSpan.setAttribute('aria-hidden', 'true');
+  btn.appendChild(iconSpan);
+  btn.appendChild(srOnly(tooltip));
   btn.title = tooltip;
+  btn.setAttribute('aria-label', tooltip);
   btn.style.fontSize = '1.1rem';
   btn.style.padding = '0.25rem 0.5rem';
   btn.style.cursor = 'pointer';
@@ -694,8 +714,14 @@ wrapper.appendChild(contentWrapper);
               const a = document.createElement('a');
               a.href = doc.url;
               a.download = doc.filename;
-              a.title = `Download ${doc.filename}`;
-              a.textContent = '⬇️';
+              const downloadLabel = `Download ${doc.filename}`;
+              a.title = downloadLabel;
+              a.setAttribute('aria-label', downloadLabel);
+              const downloadIcon = document.createElement('span');
+              downloadIcon.textContent = '⬇️';
+              downloadIcon.setAttribute('aria-hidden', 'true');
+              a.appendChild(downloadIcon);
+              a.appendChild(srOnly(downloadLabel));
               a.style.marginRight = '0.5rem';
               a.style.textDecoration = 'none';
               a.style.fontSize = '1.2rem';
@@ -703,8 +729,14 @@ wrapper.appendChild(contentWrapper);
 
               // History icon
               const historyBtn = document.createElement('button');
-              historyBtn.textContent = '🕓';
-              historyBtn.title = 'View File History';
+              const historyIcon = document.createElement('span');
+              historyIcon.textContent = '🕓';
+              historyIcon.setAttribute('aria-hidden', 'true');
+              const historyLabel = 'View File History';
+              historyBtn.setAttribute('aria-label', historyLabel);
+              historyBtn.appendChild(historyIcon);
+              historyBtn.appendChild(srOnly(historyLabel));
+              historyBtn.title = historyLabel;
               historyBtn.style.fontSize = '1.2rem';
               historyBtn.style.cursor = 'pointer';
               historyBtn.style.background = 'none';
@@ -715,8 +747,14 @@ wrapper.appendChild(contentWrapper);
 
               // Delete icon
               const deleteBtn = document.createElement('button');
-              deleteBtn.textContent = '🗑️';
-              deleteBtn.title = 'Delete Document';
+              const deleteIcon = document.createElement('span');
+              deleteIcon.textContent = '🗑️';
+              deleteIcon.setAttribute('aria-hidden', 'true');
+              const deleteLabel = 'Delete Document';
+              deleteBtn.setAttribute('aria-label', deleteLabel);
+              deleteBtn.appendChild(deleteIcon);
+              deleteBtn.appendChild(srOnly(deleteLabel));
+              deleteBtn.title = deleteLabel;
               deleteBtn.style.fontSize = '1.2rem';
               deleteBtn.style.cursor = 'pointer';
               deleteBtn.style.background = 'none';
@@ -1461,8 +1499,14 @@ function documentCard(doc, keys = ['title', 'status', 'summary', 'download'], th
       const link = document.createElement('a');
       link.href = doc.url;
       link.download = doc.filename;
-      link.textContent = '⬇️';
-      link.title = `Download ${doc.filename}`;
+      const downloadLabel = `Download ${doc.filename}`;
+      link.title = downloadLabel;
+      link.setAttribute('aria-label', downloadLabel);
+      const linkIcon = document.createElement('span');
+      linkIcon.textContent = '⬇️';
+      linkIcon.setAttribute('aria-hidden', 'true');
+      link.appendChild(linkIcon);
+      link.appendChild(srOnly(downloadLabel));
       link.style.display = 'inline-block';
       link.style.marginTop = '0.5rem';
       link.style.marginRight = '0.5rem';
@@ -1471,8 +1515,14 @@ function documentCard(doc, keys = ['title', 'status', 'summary', 'download'], th
       link.style.cursor = 'pointer';
 
       const historyBtn = document.createElement('button');
-      historyBtn.textContent = '🕓';
-      historyBtn.title = 'View File History';
+      const historyIcon = document.createElement('span');
+      historyIcon.textContent = '🕓';
+      historyIcon.setAttribute('aria-hidden', 'true');
+      const historyLabel = 'View File History';
+      historyBtn.setAttribute('aria-label', historyLabel);
+      historyBtn.appendChild(historyIcon);
+      historyBtn.appendChild(srOnly(historyLabel));
+      historyBtn.title = historyLabel;
       historyBtn.style.cursor = 'pointer';
       historyBtn.style.background = 'none';
       historyBtn.style.border = 'none';
@@ -1482,8 +1532,14 @@ function documentCard(doc, keys = ['title', 'status', 'summary', 'download'], th
       });
 
       const deleteBtn = document.createElement('button');
-      deleteBtn.textContent = '🗑️';
-      deleteBtn.title = 'Delete Document';
+      const deleteIcon = document.createElement('span');
+      deleteIcon.textContent = '🗑️';
+      deleteIcon.setAttribute('aria-hidden', 'true');
+      const deleteLabel = 'Delete Document';
+      deleteBtn.setAttribute('aria-label', deleteLabel);
+      deleteBtn.appendChild(deleteIcon);
+      deleteBtn.appendChild(srOnly(deleteLabel));
+      deleteBtn.title = deleteLabel;
       deleteBtn.style.cursor = 'pointer';
       deleteBtn.style.background = 'none';
       deleteBtn.style.border = 'none';
@@ -1575,8 +1631,13 @@ function groupedDocumentCards(documentsStream, expandedStream, themeStream = cur
 
   const iconButton = (label, onClick, tooltip) => {
     const btn = document.createElement('button');
-    btn.innerHTML = label; // icon SVG or symbol
+    const iconSpan = document.createElement('span');
+    iconSpan.innerHTML = label; // icon SVG or symbol
+    iconSpan.setAttribute('aria-hidden', 'true');
+    btn.appendChild(iconSpan);
+    btn.appendChild(srOnly(tooltip));
     btn.title = tooltip;
+    btn.setAttribute('aria-label', tooltip);
     btn.style.fontSize = '1.1rem';
     btn.style.padding = '0.25rem 0.5rem';
     btn.style.cursor = 'pointer';
