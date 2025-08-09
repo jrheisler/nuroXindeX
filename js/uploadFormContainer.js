@@ -6,10 +6,7 @@ var repoPath = '';
 var huggingFaceToken = '';
 
 async function fetchAuthTokens() {
-  if (window.location.protocol === 'file:') {
-    console.error('Auth tokens must be served from a backend. Start the server with `node server.js`.');
-    return;
-  }
+
   try {
     const response = await fetch('/api/tokens');
     if (!response.ok) throw new Error('Failed to retrieve auth tokens');
