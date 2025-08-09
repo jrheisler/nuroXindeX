@@ -154,12 +154,10 @@ function settingsModal(showModalStream, themeStream = currentTheme) {
         try {
           await ensureDirectoriesExist();
         } catch (err) {
-          showToast('Failed to ensure directories', { type: 'error' });
-          isSaving.set(false);
-          return;
+          console.error('Failed to ensure directories', err);
         }
 
-        // Close modal after saving
+        // Close modal after saving regardless of errors
         showModalStream.set(false);
         isSaving.set(false);
       }, { margin: '0.5rem 0', rounded: true }, themeStream);
@@ -368,8 +366,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       await ensureDirectoriesExist();
     } catch (err) {
-      showToast('Failed to ensure repository directories', { type: 'error' });
-      showModalStream.set(true);
+      console.error('Failed to ensure repository directories', err);
     }
   }
 
