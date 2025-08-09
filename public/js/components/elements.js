@@ -1027,7 +1027,7 @@ async function showFileHistoryModal(filename, themeStream = currentTheme) {
   try {
     const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/commits?path=${repoPath}/${encodeURIComponent(filename)}`, {
       headers: {
-        'Authorization': `token ${githubToken}`
+        'Authorization': `Bearer ${githubToken}`
       }
     });
     const commits = await response.json();

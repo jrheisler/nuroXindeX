@@ -87,7 +87,7 @@ async function createMetadataFile(slug, title, filePath, summary) {
     await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${metadataFilePath}`, {
         method: 'PUT',
         headers: {
-            'Authorization': `token ${githubToken}`,
+            'Authorization': `Bearer ${githubToken}`,
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -100,7 +100,7 @@ async function createMetadataFile(slug, title, filePath, summary) {
 async function fetchDocumentIndexFromGitHub() {
   const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${repoPath}/index.json`, {
     headers: {
-      'Authorization': `token ${githubToken}`
+      'Authorization': `Bearer ${githubToken}`
     }
   });
 
@@ -119,7 +119,7 @@ async function fetchDocumentIndexFromGitHub() {
 async function fetchDocumentIndex() {
   const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${repoPath}/index.json`, {
     headers: {
-      'Authorization': `token ${githubToken}`,
+      'Authorization': `Bearer ${githubToken}`,
     }
   });
   const data = await response.json();
@@ -147,10 +147,10 @@ async function uploadFileToGitHub(file, slug) {
     }
 
     // Make the request to GitHub API
-    const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
+  const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
       method: 'PUT',
       headers: {
-        'Authorization': `token ${githubToken}`,
+        'Authorization': `Bearer ${githubToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -198,7 +198,7 @@ async function updateDocumentIndex(newDoc) {
   try {
     const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
       headers: {
-        'Authorization': `token ${githubToken}`
+        'Authorization': `Bearer ${githubToken}`
       }
     });
 
@@ -226,7 +226,7 @@ async function updateDocumentIndex(newDoc) {
   const putResponse = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
     method: 'PUT',
     headers: {
-      'Authorization': `token ${githubToken}`,
+      'Authorization': `Bearer ${githubToken}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({

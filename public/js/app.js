@@ -220,7 +220,7 @@ async function checkIfFileExists(filePath) {
   const response = await fetchWithRetry(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
     method: 'GET',
     headers: {
-      'Authorization': `token ${githubToken}`,
+      'Authorization': `Bearer ${githubToken}`,
     }
   });
 
@@ -258,7 +258,7 @@ async function ensureDirectoriesExist() {
             await fetchWithRetry(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${path}`, {
                 method: 'PUT',
                 headers: {
-                    'Authorization': `token ${githubToken}`,
+                    'Authorization': `Bearer ${githubToken}`,
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
@@ -288,7 +288,7 @@ async function deleteDocument(doc) {
       await fetchWithRetry(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `token ${githubToken}`,
+          'Authorization': `Bearer ${githubToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -304,7 +304,7 @@ async function deleteDocument(doc) {
       await fetchWithRetry(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${metaPath}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `token ${githubToken}`,
+          'Authorization': `Bearer ${githubToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -316,7 +316,7 @@ async function deleteDocument(doc) {
 
     const indexPath = joinPath(repoPath, 'index.json');
     const indexRes = await fetchWithRetry(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${indexPath}`, {
-      headers: { 'Authorization': `token ${githubToken}` },
+      headers: { 'Authorization': `Bearer ${githubToken}` },
     });
     if (indexRes.ok) {
       const indexData = await indexRes.json();
@@ -327,7 +327,7 @@ async function deleteDocument(doc) {
       await fetchWithRetry(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${indexPath}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `token ${githubToken}`,
+          'Authorization': `Bearer ${githubToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
