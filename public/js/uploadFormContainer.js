@@ -1,0 +1,426 @@
+// Retrieve values from localStorage
+var githubUsername = '';
+var githubTokenEncoded = '';
+var githubToken = '';
+var repoOwner = '';
+var repoName = '';
+var repoPath = '';
+var huggingFaceTokenEncoded = '';
+var huggingFaceToken = '';
+
+
+// Base64 encode function (obfuscation)
+function base64Encode(str) {
+  return btoa(unescape(encodeURIComponent(str)));
+}
+
+// Base64 decode function (deobfuscation)
+function base64Decode(str) {
+  return decodeURIComponent(escape(atob(str)));
+}
+
+// === Hugging Face summarization ===
+async function summarizeText(text) {
+    if (!huggingFaceToken) {
+        console.warn('Hugging Face token not set; skipping summary');
+        return '';
+    }
+    try {
+        // Using Hugging Face's BART model via summarization pipeline
+        const response = await fetch('https://api-inference.huggingface.co/models/facebook/bart-large-cnn', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${huggingFaceToken}`
+            },
+            body: JSON.stringify({ inputs: text })
+        });
+        if (!response.ok) {
+            console.error('Summarization API error:', await response.text());
+            return '';
+        }
+        const data = await response.json();
+        return Array.isArray(data) && data[0] && data[0].summary_text ? data[0].summary_text : '';
+    } catch (err) {
+        console.error('Error generating summary:', err);
+        return '';
+    }
+}
+
+async function triggerEnrichmentPipeline(file) {
+    console.log('Triggering enrichment pipeline for file:', file && file.name);
+    try {
+        const text = await file.text();
+        return await summarizeText(text.slice(0, 3000));
+    } catch (err) {
+        console.error('Enrichment pipeline failed:', err);
+        return '';
+    }
+}
+
+function generateSlug(title) {
+    const baseSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    return baseSlug;
+}
+
+async function getUniqueSlug(title) {
+    let slug = generateSlug(title);
+    let counter = 1;
+    let uniqueSlug = slug;
+    while (await checkIfFileExists(`${repoPath}/docs/${uniqueSlug}`)) {
+        uniqueSlug = `${slug}-${counter}`;
+        counter++;
+    }
+    return uniqueSlug;
+}
+
+async function createMetadataFile(slug, title, filePath, summary) {
+    const metadata = {
+        title: title,
+        path: filePath,
+        summary: summary || "",
+    };
+    console.log("Creating metadata file with:", metadata);
+    const metadataContent = btoa(JSON.stringify(metadata, null, 2));
+    const metadataFilePath = `${repoPath}/meta/${slug}.json`;
+
+    await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${metadataFilePath}`, {
+        method: 'PUT',
+        headers: {
+            'Authorization': `token ${githubToken}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            message: `Create metadata for ${title}`,
+            content: metadataContent,
+        })
+    });
+}
+
+async function fetchDocumentIndexFromGitHub() {
+  const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${repoPath}/index.json`, {
+    headers: {
+      'Authorization': `token ${githubToken}`
+    }
+  });
+
+  if (!response.ok) {
+    console.error("Failed to fetch index.json:", await response.text());
+    throw new Error("Unable to fetch document index from GitHub.");
+  }
+
+  const result = await response.json(); // ✅ This works with metadata response
+  const decodedContent = atob(result.content); // Base64 → string
+  return JSON.parse(decodedContent);           // string → object[]
+}
+
+
+// Function to get the index file from GitHub repo (to update the document index)
+async function fetchDocumentIndex() {
+  const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${repoPath}/index.json`, {
+    headers: {
+      'Authorization': `token ${githubToken}`,
+    }
+  });
+  const data = await response.json();
+  if (data.content) {
+    const decodedData = atob(data.content);  // Decoding from base64
+    return JSON.parse(decodedData);
+  }
+  return [];
+}
+
+// Function to upload a file to GitHub and get the file URL
+async function uploadFileToGitHub(file, slug) {
+  const base64Content = await getBase64(file); // Get the Base64 string of the file
+  const extension = file.name.slice(file.name.lastIndexOf('.'));
+  const filePath = `${repoPath}/docs/${slug}${extension}`;
+
+  try {
+    // Check if the file already exists to get the sha for updates
+    const fileExists = await checkIfFileExists(filePath);
+
+    let sha = null;
+    if (fileExists) {
+      // If the file exists, get the current file's sha
+      sha = fileExists.sha;
+    }
+
+    // Make the request to GitHub API
+    const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `token ${githubToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: `Upload document: ${file.name}`,
+        content: base64Content, // Base64 encoded file content
+        sha: sha, // Add sha for existing files
+      })
+    });
+
+    // Check if the response is OK
+    if (response.ok) {
+      const data = await response.json();
+      return data.content.download_url;
+    } else {
+      const errorData = await response.json();
+      console.error("Error uploading file:", errorData); // Log the error for debugging
+      throw new Error(`GitHub API Error: ${errorData.message}`);
+    }
+  } catch (error) {
+    console.error("Error in uploadFileToGitHub:", error); // Log the full error
+    throw error;
+  }
+}
+
+
+
+// Helper function to convert file to base64
+function getBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result.split(',')[1]); // Get Base64 without the prefix
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(file); // Convert the file to Base64
+  });
+}
+
+
+// Function to update the document index (index.json) on GitHub
+async function updateDocumentIndex(newDoc) {
+  const filePath = `${repoPath}/index.json`;
+  let existingIndex = [];
+  let sha = null;
+
+  // Step 1: Try to fetch the current index and sha
+  try {
+    const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
+      headers: {
+        'Authorization': `token ${githubToken}`
+      }
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      sha = data.sha; // Required for updating
+      const decoded = atob(data.content);
+      existingIndex = JSON.parse(decoded);
+    }
+  } catch (err) {
+    console.warn("Could not fetch index.json, will create a new one.");
+  }
+
+  // Step 2: Merge or replace entry in index
+  const index = existingIndex.findIndex(doc => doc.title === newDoc.title);
+  if (index >= 0) {
+    existingIndex[index] = newDoc;
+  } else {
+    existingIndex.push(newDoc);
+  }
+
+  // Step 3: Upload updated index
+  const updatedContent = btoa(JSON.stringify(existingIndex, null, 2));
+
+  const putResponse = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `token ${githubToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      message: `Update index.json with ${newDoc.title}`,
+      content: updatedContent,
+      ...(sha && { sha }), // Only include sha if updating existing file
+    })
+  });
+
+  if (!putResponse.ok) {
+    const error = await putResponse.json();
+    console.error("Error updating index:", error);
+    throw new Error("Failed to update index.json");
+  }
+}
+
+// === Upload toggle button ===
+function uploadToggleContainer(showFormStream) {
+  return container([
+    reactiveButton(new Stream("Upload Document"), () => {
+      showFormStream.set(!showFormStream.get());
+    }, {
+      rounded: true,
+      margin: '1rem 0',
+      size: '1.1rem'
+    })
+  ], { align: 'center' ,
+    border: '0px'
+  });
+}
+
+// === Upload form container ===
+function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStream, themeStream = currentTheme) {
+  const titleStream = new Stream('');
+  const descriptionStream = new Stream('');
+  const statusStream = new Stream('');
+  const fileStream = new Stream(null);
+  const categoryStream = new Stream('');
+  const metaStream = new Stream('');
+  
+
+  fileStream.subscribe(file => {
+    if (file) titleStream.set(file.name);
+  });
+
+  return conditional(showFormStream, () => {
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100vw';
+    overlay.style.height = '100vh';
+    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.zIndex = '1000';
+
+    const modal = document.createElement('div');
+    modal.style.padding = '1.5rem';
+    modal.style.backgroundColor = '#fff';
+    modal.style.borderRadius = '8px';
+    modal.style.boxShadow = '0 0 10px rgba(0,0,0,0.3)';
+    modal.style.width = '90%';
+    modal.style.maxWidth = '500px';
+    modal.style.position = 'relative';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '✕';
+    closeBtn.style.position = 'absolute';
+    closeBtn.style.top = '0.5rem';
+    closeBtn.style.right = '0.5rem';
+    closeBtn.style.background = 'none';
+    closeBtn.style.border = 'none';
+    closeBtn.style.fontSize = '1.5rem';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.addEventListener('click', () => showFormStream.set(false));
+    modal.appendChild(closeBtn);
+
+    const content = container([
+      fileInput(fileStream, { margin: '0.5rem 0' }, themeStream),
+      editText(titleStream, { placeholder: 'Title (required)', margin: '0.5rem 0' }, themeStream),
+      editTextArea(descriptionStream, { placeholder: 'Optional description', margin: '0.5rem 0' }, themeStream),
+      dropdownStream(statusStream, {
+        choices: ['draft', 'under review', 'approved', 'final', 'archived'],
+        margin: '0.5rem 0'
+      }, themeStream),
+      editableDropdown(categoryStream, knownCategoriesStream, themeStream),
+      editText(metaStream, { placeholder: 'Meta data', margin: '0.5rem 0' }, themeStream),
+      // === Save Button Handler ===
+       // === Save Button Handler ===
+    (() => {
+    const isSaving = new Stream(false);
+    const saveLabel = derived(isSaving, val => val ? "Saving..." : "Upload and Process");
+
+    return reactiveButton(saveLabel, async () => {
+        if (isSaving.get()) return;
+        isSaving.set(true);
+
+        const existing = documentsStream.get().find(doc => doc.title === titleStream.get());
+        // Inside your async save handler...
+
+        if (existing) {
+          const confirmReplace = await showConfirmationDialog(
+            "A document with this title already exists. Uploading a new version?",
+            themeStream // Pass your themeStream
+          );
+          if (!confirmReplace) {
+            isSaving.set(false);
+            return;
+          }
+        }
+
+
+        const file = fileStream.get();
+        if (!file) {
+        alert("No file selected");
+        isSaving.set(false);
+        return;
+        }
+
+        const title = titleStream.get().trim();
+        if (!title) {
+            alert("Title is required.");
+            isSaving.set(false);
+            return;
+        }
+
+        const slug = await getUniqueSlug(title);
+        const docs = documentsStream.get();
+        const index = docs.findIndex(doc => doc.title === title);
+        const now = new Date().toISOString();
+
+        const newDoc = {
+        description: descriptionStream.get(),
+        meta: metaStream.get(),
+        category: categoryStream.get(),
+        title,
+        status: statusStream.get(),
+        filename: file.name,
+        createdAt: index >= 0 ? docs[index].createdAt : now,
+        lastUpdated: now,
+        id: slug,
+        };
+
+        const summary = await triggerEnrichmentPipeline(file);
+
+        console.log("newDoc object:", newDoc);
+
+        try {
+        const fileUrl = await uploadFileToGitHub(file, slug);
+        newDoc.url = fileUrl;
+
+        await createMetadataFile(slug, title, fileUrl, summary);
+
+        await updateDocumentIndex(newDoc);
+
+        if (index >= 0) {
+            docs[index] = newDoc;
+        } else {
+            docs.push(newDoc);
+        }
+
+        documentsStream.set([...docs]);
+        showFormStream.set(false);
+        } catch (err) {
+        alert("Error uploading document: " + err.message);
+        } finally {
+        isSaving.set(false);
+        }
+    }, { margin: '0.5rem 0', rounded: true }, themeStream);
+    })()
+    ], {});
+
+    modal.appendChild(content);
+    overlay.appendChild(modal);
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) showFormStream.set(false);
+    });
+
+    const escHandler = (e) => {
+      if (e.key === 'Escape') showFormStream.set(false);
+    };
+    document.addEventListener('keydown', escHandler);
+
+    const observer = new MutationObserver(() => {
+      if (!document.body.contains(overlay)) {
+        document.removeEventListener('keydown', escHandler);
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return overlay;
+  });
+}
