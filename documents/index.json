@@ -8,7 +8,16 @@
     "createdAt": "2025-06-03T19:16:21.785Z",
     "lastUpdated": "2025-06-03T19:16:21.785Z",
     "id": "Jeff Heisler Resume February.pdf",
-    "url": "https://raw.githubusercontent.com/jrheisler/jazira-light/main/documents/Jeff%20Heisler%20Resume%20February.pdf"
+    "url": "https://raw.githubusercontent.com/jrheisler/jazira-light/main/documents/Jeff%20Heisler%20Resume%20February.pdf",
+    "tokens": [
+      "jeff",
+      "heisler",
+      "resume",
+      "february",
+      "pdf",
+      "latest",
+      "download"
+    ]
   },
   {
     "meta": "NOTLD",
@@ -19,7 +28,14 @@
     "createdAt": "2025-06-03T19:16:57.901Z",
     "lastUpdated": "2025-06-03T19:17:19.977Z",
     "id": "script (74).txt",
-    "url": "https://raw.githubusercontent.com/jrheisler/jazira-light/main/documents/script%20(74).txt"
+    "url": "https://raw.githubusercontent.com/jrheisler/jazira-light/main/documents/script%20(74).txt",
+    "tokens": [
+      "script",
+      "74",
+      "txt",
+      "notld",
+      "download"
+    ]
   },
   {
     "meta": "MM Account",
@@ -30,7 +46,14 @@
     "createdAt": "2025-06-03T19:17:49.235Z",
     "lastUpdated": "2025-06-03T19:17:49.235Z",
     "id": "December312024statement.pdf",
-    "url": "https://raw.githubusercontent.com/jrheisler/jazira-light/main/documents/December312024statement.pdf"
+    "url": "https://raw.githubusercontent.com/jrheisler/jazira-light/main/documents/December312024statement.pdf",
+    "tokens": [
+      "december312024statement",
+      "pdf",
+      "mm",
+      "account",
+      "download"
+    ]
   },
   {
     "meta": "scan",
@@ -41,7 +64,14 @@
     "createdAt": "2025-06-03T19:18:49.147Z",
     "lastUpdated": "2025-06-03T19:18:49.147Z",
     "id": "Scan_20250414.png",
-    "url": "https://raw.githubusercontent.com/jrheisler/jazira-light/main/documents/Scan_20250414.png"
+    "url": "https://raw.githubusercontent.com/jrheisler/jazira-light/main/documents/Scan_20250414.png",
+    "tokens": [
+      "scan_20250414",
+      "png",
+      "scan",
+      "2024",
+      "taxes"
+    ]
   },
   {
     "meta": "scan",
@@ -52,7 +82,14 @@
     "createdAt": "2025-06-03T19:19:05.066Z",
     "lastUpdated": "2025-06-03T19:19:05.066Z",
     "id": "FetchStatementandNotices.pdf",
-    "url": "https://raw.githubusercontent.com/jrheisler/jazira-light/main/documents/FetchStatementandNotices.pdf"
+    "url": "https://raw.githubusercontent.com/jrheisler/jazira-light/main/documents/FetchStatementandNotices.pdf",
+    "tokens": [
+      "fetchstatementandnotices",
+      "pdf",
+      "scan",
+      "2024",
+      "taxes"
+    ]
   },
   {
     "meta": "pdf",
@@ -63,7 +100,13 @@
     "createdAt": "2025-06-03T19:19:47.624Z",
     "lastUpdated": "2025-06-03T19:19:47.624Z",
     "id": "2024_TaxReturn.pdf",
-    "url": "https://raw.githubusercontent.com/jrheisler/jazira-light/main/documents/2024_TaxReturn.pdf"
+    "url": "https://raw.githubusercontent.com/jrheisler/jazira-light/main/documents/2024_TaxReturn.pdf",
+    "tokens": [
+      "2024_taxreturn",
+      "pdf",
+      "2024",
+      "taxes"
+    ]
   },
   {
     "meta": "",
@@ -74,6 +117,18 @@
     "createdAt": "2025-06-12T14:27:06.422Z",
     "lastUpdated": "2025-06-12T14:27:06.422Z",
     "id": "Smog-Inspections-California-DMV-06-02-2025_11_53_AM (1).png",
-    "url": "https://raw.githubusercontent.com/jrheisler/jazira-light/main/documents/Smog-Inspections-California-DMV-06-02-2025_11_53_AM%20(1).png"
+    "url": "https://raw.githubusercontent.com/jrheisler/jazira-light/main/documents/Smog-Inspections-California-DMV-06-02-2025_11_53_AM%20(1).png",
+    "tokens": [
+      "smog",
+      "inspections",
+      "california",
+      "dmv",
+      "06",
+      "02",
+      "2025_11_53_am",
+      "1",
+      "png",
+      "download"
+    ]
   }
 ]

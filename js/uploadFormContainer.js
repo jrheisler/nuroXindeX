@@ -526,6 +526,15 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
 
           newDoc.summary = summary;
 
+          const fields = [
+            newDoc.title,
+            newDoc.description,
+            newDoc.meta,
+            newDoc.category,
+            newDoc.summary
+          ];
+          newDoc.tokens = Array.from(new Set(tokenize(fields.join(' '))));
+
           statusStream.set('indexing');
           await createMetadataFile(slug, title, fileUrl, summary);
 
