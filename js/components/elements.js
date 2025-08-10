@@ -885,6 +885,7 @@ function editableDropdown(valueStream, optionsStream, themeStream = currentTheme
       o.textContent = opt;
       select.appendChild(o);
     }
+    select.value = valueStream.get() || '';
   }
 
   // Update value stream on selection or manual input
@@ -898,6 +899,12 @@ function editableDropdown(valueStream, optionsStream, themeStream = currentTheme
 
   // React to options stream
   optionsStream.subscribe(updateOptions);
+
+  // Reflect external changes in the UI
+  valueStream.subscribe(val => {
+    select.value = val;
+    input.value = val;
+  });
 
   // Apply theme styles
   themeStream.subscribe(theme => {

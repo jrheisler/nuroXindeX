@@ -363,7 +363,7 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
   const descriptionStream = new Stream('');
   const docStatusStream = new Stream('');
   const fileStream = new Stream(null);
-  const categoryStream = new Stream('');
+  const categoryStream = new Stream(localStorage.getItem('lastUsedCategory') || '');
   const metaStream = new Stream('');
 
   // Streams for upload progress/status
@@ -569,6 +569,7 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
           }
 
           documentsStream.set([...docs]);
+          localStorage.setItem('lastUsedCategory', newDoc.category);
           showFormStream.set(false);
         } catch (err) {
           statusStream.set('');
