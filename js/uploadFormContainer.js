@@ -98,7 +98,8 @@ async function triggerEnrichmentPipeline(file, statusStream) {
 }
 
 function generateSlug(title) {
-    const baseSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const nameWithoutExt = title.replace(/\.[^/.]+$/, '');
+    const baseSlug = nameWithoutExt.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     return baseSlug;
 }
 
@@ -123,7 +124,9 @@ async function createMetadataFile(slug, title, filePath, summary) {
     const metadataContent = base64Encode(JSON.stringify(metadata, null, 2));
     const metadataFilePath = `${repoPath}/meta/${slug}.json`;
 
-    await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${metadataFilePath}`, {
+    const existingMeta = await checkIfFileExists(metadataFilePath);
+
+    const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${metadataFilePath}`, {
         method: 'PUT',
         headers: {
             'Authorization': `token ${githubToken}`,
@@ -132,8 +135,16 @@ async function createMetadataFile(slug, title, filePath, summary) {
         body: JSON.stringify({
             message: `Create metadata for ${title}`,
             content: metadataContent,
+            ...(existingMeta && { sha: existingMeta.sha })
         })
     });
+
+    const respText = await response.text();
+    if (!response.ok) {
+        console.error('Error creating metadata file:', response.status, respText);
+    } else {
+        console.log('Metadata file response:', response.status, respText);
+    }
 }
 
 async function fetchDocumentIndexFromGitHub() {
