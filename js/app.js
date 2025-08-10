@@ -395,6 +395,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     return Array.from(set).sort();
   });
 
+  const metricsStream = derived(documentsStream, docs => {
+    const totalDocs = docs.length;
+    const categories = new Set(docs.map(doc => doc.category?.trim()).filter(Boolean));
+    const latest = docs.reduce((latest, doc) => {
+      const date = doc.lastUpdated ? new Date(doc.lastUpdated) : null;
+      return date && (!latest || date > latest) ? date : latest;
+    }, null);
+    return {
+      totalDocs,
+      uniqueCategories: categories.size,
+      latestUpdate: latest ? latest.toISOString().split('T')[0] : 'N/A'
+    };
+  });
+
   if (!missingConfig) {
     // 🟡 Fetch index.json and hydrate the stream
     try {
@@ -465,6 +479,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   document.body.appendChild(
     column([
+      headerContainer(headerTitleStream, metricsStream, currentTheme),
       container(
         row([
           userAvatar,
