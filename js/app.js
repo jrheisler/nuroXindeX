@@ -346,7 +346,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   githubToken = base64Decode(githubTokenEncoded);
   huggingFaceToken = base64Decode(huggingFaceTokenEncoded || '');
 
-  const missingConfig = !githubToken || !repoOwner || !repoName;
+  // Ensure all required GitHub settings are present before continuing
+  const missingConfig = !githubToken || !repoOwner || !repoName || !repoPath;
 
   if (!missingConfig) {
     try {
@@ -356,6 +357,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   } else {
     showModalStream.set(true);
+    showToast('Please complete the setup in Settings.');
   }
 
   // Apply theme
@@ -379,6 +381,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.warn("Using empty index as fallback.");
       documentsStream.set([]); // Fallback: start with empty list
     }
+  } else {
+    showToast('Please complete the setup in Settings.');
   }
 
   const userAvatarStream = new Stream('doc.webp');
