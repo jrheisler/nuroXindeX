@@ -64,6 +64,13 @@ function settingsModal(showModalStream, themeStream = currentTheme) {
     closeBtn.addEventListener('click', () => showModalStream.set(false));
     modal.appendChild(closeBtn);
 
+    const introText = reactiveText(
+      new Stream('Provide the required GitHub credentials and repository details below. Username, personal access token, owner, and repository name are required.'),
+      { margin: '0 0 1rem 0' },
+      themeStream
+    );
+    modal.appendChild(introText);
+
     // Helper to build labeled fields
     const labeledField = (labelText, inputEl, extra) => {
       const label = reactiveText(new Stream(labelText), { tag: 'label', margin: '0 0 0.25rem 0' }, themeStream);
@@ -74,11 +81,11 @@ function settingsModal(showModalStream, themeStream = currentTheme) {
     };
 
     // GitHub Username
-    const githubUsernameInput = editText(githubUsernameStream, { margin: '0' }, themeStream);
+    const githubUsernameInput = editText(githubUsernameStream, { margin: '0', placeholder: 'GitHub username' }, themeStream);
     const githubUsernameField = labeledField('GitHub Username', githubUsernameInput);
 
     // GitHub Token with mask/unmask
-    const githubTokenInput = editText(githubTokenStream, { margin: '0', type: 'text' }, themeStream);
+    const githubTokenInput = editText(githubTokenStream, { margin: '0', type: 'text', placeholder: 'Personal access token' }, themeStream);
     if (githubTokenStream.get()) githubTokenInput.value = '****';
     const githubTokenToggleLabel = new Stream('Show');
     const githubTokenField = labeledField('GitHub Token', githubTokenInput,
@@ -94,19 +101,19 @@ function settingsModal(showModalStream, themeStream = currentTheme) {
     );
 
     // Repository Owner
-    const repoOwnerInput = editText(repoOwnerStream, { margin: '0' }, themeStream);
+    const repoOwnerInput = editText(repoOwnerStream, { margin: '0', placeholder: 'Repository owner' }, themeStream);
     const repoOwnerField = labeledField('Repository Owner', repoOwnerInput);
 
     // Repository Name
-    const repoNameInput = editText(repoNameStream, { margin: '0' }, themeStream);
+    const repoNameInput = editText(repoNameStream, { margin: '0', placeholder: 'Repository name' }, themeStream);
     const repoNameField = labeledField('Repository Name', repoNameInput);
 
     // Repository Path
-    const repoPathInput = editText(repoPathStream, { margin: '0' }, themeStream);
+    const repoPathInput = editText(repoPathStream, { margin: '0', placeholder: 'Repository path' }, themeStream);
     const repoPathField = labeledField('Repository Path', repoPathInput);
 
     // Hugging Face Token with mask/unmask
-    const huggingFaceTokenInput = editText(huggingFaceTokenStream, { margin: '0', type: 'text' }, themeStream);
+    const huggingFaceTokenInput = editText(huggingFaceTokenStream, { margin: '0', type: 'text', placeholder: 'Hugging Face token' }, themeStream);
     if (huggingFaceTokenStream.get()) huggingFaceTokenInput.value = '****';
     const hfToggleLabel = new Stream('Show');
     const huggingFaceTokenField = labeledField('Hugging Face Token', huggingFaceTokenInput,
