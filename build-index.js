@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const tokenize = require('./js/core/tokenize');
 
 const META_DIR = path.join(__dirname, 'meta');
 const INDEX_FILE = path.join(__dirname, 'index.json');
@@ -25,6 +26,10 @@ function readMetadata() {
       if (data.date && !isValidDate(data.date)) {
         throw new Error('Invalid date');
       }
+      const textContent = Object.values(data)
+        .filter(v => typeof v === 'string')
+        .join(' ');
+      data.tokens = Array.from(new Set(tokenize(textContent)));
       items.push(data);
     } catch (err) {
       console.error(`Skipping ${file}: ${err.message}`);

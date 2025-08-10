@@ -16,6 +16,13 @@ A lightweight reactive UI micro-framework in plain JavaScript — inspired by Sv
 * 📝 **Reactive components**: Use `reactiveText` and `editText` to bind UI to state.
 * 🧩 **JSON-bound streams**: Bind `Stream` instances directly to keys in a JSON object (e.g. fetched from storage or API).
 * 📄 **Document summarization**: Generates summaries for text, PDF, and Word files via Hugging Face models.
+* 🔍 **Tokenized search**: Text is lowercased and split into word tokens using `/\w+/g` for exact-match querying.
+
+---
+
+## 🔎 Search Tokenization
+
+During `build-index.js` the text from all metadata fields is concatenated, lowercased and split into word tokens using the regular expression `/\w+/g`. Search queries are tokenized the same way and a document matches only when **all** query tokens are present in its token list. The `\w` class targets ASCII letters, numbers and underscores, so languages requiring different word boundaries may need a custom tokenizer.
 
 ---
 
