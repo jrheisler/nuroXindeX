@@ -166,6 +166,18 @@ function settingsModal(showModalStream, themeStream = currentTheme) {
 
         // Close modal after saving
         showModalStream.set(false);
+
+        // Fetch updated index with new credentials
+        if (window.documentsStream) {
+          try {
+            const indexData = await fetchDocumentIndexFromGitHub();
+            window.documentsStream.set(indexData);
+          } catch (err) {
+            console.warn('Using empty index as fallback.', err);
+            window.documentsStream.set([]);
+          }
+        }
+
         isSaving.set(false);
       }, { margin: '0.5rem 0', rounded: true }, themeStream);
     })();
