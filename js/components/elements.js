@@ -612,14 +612,15 @@ wrapper.appendChild(contentWrapper);
     (docs, expanded, theme, search, colWidths) => {
       contentWrapper.innerHTML = '';
 
-      const lowerSearch = search.trim().toLowerCase();
-      const isSearching = lowerSearch.length > 0;
+      const queryTokens = tokenize(search);
+      const isSearching = queryTokens.length > 0;
 
-      const filteredDocs = docs.filter(doc =>
-        keys.some(key =>
-          (doc[key]?.toString().toLowerCase().includes(lowerSearch))
-        )
-      );
+      const filteredDocs = isSearching
+        ? docs.filter(doc => {
+            const docTokens = doc.tokens || [];
+            return queryTokens.every(t => docTokens.includes(t));
+          })
+        : docs;
 
       const grouped = {};
       for (const doc of filteredDocs) {
@@ -1617,12 +1618,15 @@ function groupedDocumentCards(documentsStream, expandedStream, themeStream = cur
     (docs, expanded, theme, search) => {
       contentWrapper.innerHTML = '';
 
-      const lowerSearch = search.trim().toLowerCase();
-      const isSearching = lowerSearch.length > 0;
+      const queryTokens = tokenize(search);
+      const isSearching = queryTokens.length > 0;
 
-      const filteredDocs = docs.filter(doc =>
-        keys.some(key => (doc[key]?.toString().toLowerCase().includes(lowerSearch)))
-      );
+      const filteredDocs = isSearching
+        ? docs.filter(doc => {
+            const docTokens = doc.tokens || [];
+            return queryTokens.every(t => docTokens.includes(t));
+          })
+        : docs;
 
       const grouped = {};
       for (const doc of filteredDocs) {
