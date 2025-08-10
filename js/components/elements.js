@@ -8,6 +8,22 @@ function keyToTitle(key) {
     .replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1));
 }
 
+// Configure link behavior based on file type. Open browser-friendly files in a
+// new tab and download others.
+function configureFileLink(link, filename) {
+  const openableExts = ['pdf', 'txt', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'];
+  const ext = (filename.split('.').pop() || '').toLowerCase();
+  const openable = openableExts.includes(ext);
+  if (openable) {
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.removeAttribute('download');
+  } else {
+    link.download = filename;
+  }
+  return openable;
+}
+
 function reactiveElement(stream, renderFn = v => v) {
   const placeholder = document.createElement('div');
 
@@ -694,8 +710,8 @@ wrapper.appendChild(contentWrapper);
               // Download icon
               const a = document.createElement('a');
               a.href = doc.url;
-              a.download = doc.filename;
-              a.title = `Download ${doc.filename}`;
+              const openable = configureFileLink(a, doc.filename);
+              a.title = `${openable ? 'Open' : 'Download'} ${doc.filename}`;
               a.textContent = '⬇️';
               a.style.marginRight = '0.5rem';
               a.style.textDecoration = 'none';
@@ -990,8 +1006,8 @@ async function showFileHistoryModal(filename, themeStream = currentTheme) {
       const link = document.createElement('a');
       link.textContent = `${commit.commit.author.date} — ${commit.commit.message}`;
       link.href = `https://raw.githubusercontent.com/${repoOwner}/${repoName}/${commit.sha}/${repoPath}/${filename}`;
-      link.target = '_blank';
-      link.download = filename;
+      const openable = configureFileLink(link, filename);
+      link.title = `${openable ? 'Open' : 'Download'} ${filename}`;
       link.style.textDecoration = 'none';
       link.style.cursor = 'pointer';
 
@@ -1461,9 +1477,9 @@ function documentCard(doc, keys = ['title', 'status', 'summary', 'download'], th
     if (key === 'download') {
       const link = document.createElement('a');
       link.href = doc.url;
-      link.download = doc.filename;
+      const openable = configureFileLink(link, doc.filename);
       link.textContent = '⬇️';
-      link.title = `Download ${doc.filename}`;
+      link.title = `${openable ? 'Open' : 'Download'} ${doc.filename}`;
       link.style.display = 'inline-block';
       link.style.marginTop = '0.5rem';
       link.style.marginRight = '0.5rem';
