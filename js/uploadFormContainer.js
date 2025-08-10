@@ -358,7 +358,7 @@ function uploadToggleContainer(showFormStream) {
 }
 
 // === Upload form container ===
-function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStream, themeStream = currentTheme) {
+function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStream, prefillFileStream, themeStream = currentTheme) {
   const titleStream = new Stream('');
   const descriptionStream = new Stream('');
   const docStatusStream = new Stream('');
@@ -407,7 +407,11 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
     closeBtn.style.border = 'none';
     closeBtn.style.fontSize = '1.5rem';
     closeBtn.style.cursor = 'pointer';
-    closeBtn.addEventListener('click', () => showFormStream.set(false));
+    closeBtn.addEventListener('click', () => {
+      showFormStream.set(false);
+      fileStream.set(null);
+      if (prefillFileStream) prefillFileStream.set(null);
+    });
     modal.appendChild(closeBtn);
 
     // spinner element shown while awaiting operations without progress
@@ -450,8 +454,26 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
     isSaving.subscribe(updateIndicators);
     progressStream.subscribe(updateIndicators);
 
+    const fileInputEl = fileInput(fileStream, { margin: '0.5rem 0' }, themeStream);
+
+    if (prefillFileStream) {
+      prefillFileStream.subscribe(file => {
+        if (file) {
+          fileStream.set(file);
+          titleStream.set(file.name);
+          try {
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            fileInputEl.files = dt.files;
+          } catch (err) {
+            console.warn('Unable to set file input from drop:', err);
+          }
+        }
+      });
+    }
+
     const content = container([
-      fileInput(fileStream, { margin: '0.5rem 0' }, themeStream),
+      fileInputEl,
       editText(titleStream, { placeholder: 'Title (required)', margin: '0.5rem 0' }, themeStream),
       editTextArea(descriptionStream, { placeholder: 'Optional description', margin: '0.5rem 0' }, themeStream),
       dropdownStream(docStatusStream, {
@@ -563,11 +585,19 @@ function uploadFormContainer(documentsStream, showFormStream, knownCategoriesStr
     overlay.appendChild(modal);
 
     overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) showFormStream.set(false);
+      if (e.target === overlay) {
+        showFormStream.set(false);
+        fileStream.set(null);
+        if (prefillFileStream) prefillFileStream.set(null);
+      }
     });
 
     const escHandler = (e) => {
-      if (e.key === 'Escape') showFormStream.set(false);
+      if (e.key === 'Escape') {
+        showFormStream.set(false);
+        fileStream.set(null);
+        if (prefillFileStream) prefillFileStream.set(null);
+      }
     };
     document.addEventListener('keydown', escHandler);
 
