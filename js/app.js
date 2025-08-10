@@ -381,6 +381,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const showFormStream = new Stream(false);
   const droppedFileStream = new Stream(null);
   const droppedFilesQueue = [];
+
+  function processNextDroppedFile() {
+    if (showFormStream.get() || droppedFilesQueue.length === 0) return;
+    const nextFile = droppedFilesQueue.shift();
+    setTimeout(() => {
+      droppedFileStream.set(nextFile);
+      showFormStream.set(true);
+    }, 0);
+  }
   const knownCategoriesStream = derived(documentsStream, docs => {
     const set = new Set(docs.map(doc => doc.category?.trim()).filter(Boolean));
     return Array.from(set).sort();
@@ -446,22 +455,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const files = Array.from(e.dataTransfer.files || []);
     if (files.length) {
       droppedFilesQueue.push(...files);
-      if (!showFormStream.get()) {
-        const nextFile = droppedFilesQueue.shift();
-        droppedFileStream.set(nextFile);
-        showFormStream.set(true);
-      }
+      processNextDroppedFile();
     }
   });
 
   showFormStream.subscribe(open => {
-    if (!open && droppedFilesQueue.length > 0) {
-      const nextFile = droppedFilesQueue.shift();
-      setTimeout(() => {
-        droppedFileStream.set(nextFile);
-        showFormStream.set(true);
-      }, 0);
-    }
+    if (!open) processNextDroppedFile();
   });
 
   document.body.appendChild(
