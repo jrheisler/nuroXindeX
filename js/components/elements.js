@@ -494,18 +494,27 @@ function conditional(showStream, childElementFn) {
   return wrapper;
 }
 
-function headerContainer(titleStream) {
+function headerContainer(titleStream, metricsStream, themeStream = currentTheme) {
+  const docCountStream = derived(metricsStream, m => `Documents: ${m.totalDocs}`);
+  const categoryCountStream = derived(metricsStream, m => `Categories: ${m.uniqueCategories}`);
+  const latestUpdateStream = derived(metricsStream, m => `Latest Update: ${m.latestUpdate}`);
+
   return container([
     reactiveText(titleStream, {
       size: '2rem',
       weight: 'bold',
-      margin: '1rem 0',
+      margin: '0 0 0.5rem 0',
       align: 'center'
-    })
+    }, themeStream),
+    row([
+      reactiveText(docCountStream, { margin: '0' }, themeStream),
+      reactiveText(categoryCountStream, { margin: '0' }, themeStream),
+      reactiveText(latestUpdateStream, { margin: '0' }, themeStream)
+    ], { justify: 'center', gap: '1rem' }, themeStream)
   ], {
     padding: '1rem',
     align: 'center'
-  });
+  }, themeStream);
 }
 
 
