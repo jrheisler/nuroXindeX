@@ -379,6 +379,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const documentsStream = new Stream([]);
   window.documentsStream = documentsStream;
   const showFormStream = new Stream(false);
+  const droppedFileStream = new Stream(null);
   const knownCategoriesStream = derived(documentsStream, docs => {
     const set = new Set(docs.map(doc => doc.category?.trim()).filter(Boolean));
     return Array.from(set).sort();
@@ -415,17 +416,44 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // UI
   document.body.appendChild(settingsModal(showModalStream, currentTheme));
- 
+
 
   document.body.appendChild(
-    uploadFormContainer(documentsStream, showFormStream, knownCategoriesStream)
+    uploadFormContainer(documentsStream, showFormStream, knownCategoriesStream, droppedFileStream)
   );
+
+  const dropZoneText = reactiveText(new Stream('Drop file here to upload'), { align: 'center' }, currentTheme);
+  const dropZone = container(dropZoneText, {
+    padding: '2rem',
+    margin: '1rem 0',
+    border: '2px dashed #666',
+    bg: 'transparent'
+  }, currentTheme);
+  dropZone.style.textAlign = 'center';
+
+  dropZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropZone.style.background = 'rgba(255,255,255,0.1)';
+  });
+  dropZone.addEventListener('dragleave', e => {
+    e.preventDefault();
+    dropZone.style.background = 'transparent';
+  });
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.style.background = 'transparent';
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      droppedFileStream.set(file);
+      showFormStream.set(true);
+    }
+  });
 
   document.body.appendChild(
     column([
       container(
         row([
-          userAvatar,          
+          userAvatar,
           reactiveButton(new Stream("Upload Document"), () => {
             showFormStream.set(true);
           }, {
@@ -436,6 +464,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           themedThemeSelector()
         ])
       ),
+      dropZone,
       documentListContainer(documentsStream, expandedCategories, currentTheme, ['title', 'status', 'meta', 'summary', 'filename', 'lastUpdated', 'download'])
     ])
   );
