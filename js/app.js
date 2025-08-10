@@ -326,6 +326,8 @@ async function deleteDocument(doc) {
 
 // === App entry ===
 document.addEventListener('DOMContentLoaded', async () => {
+  const showModalStream = new Stream(false);
+
   // Retrieve values from localStorage
   githubUsername = localStorage.getItem('githubUsername');
   githubTokenEncoded = localStorage.getItem('githubToken');
@@ -337,8 +339,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   githubToken = base64Decode(githubTokenEncoded);
   huggingFaceToken = base64Decode(huggingFaceTokenEncoded || '');
 
-  await ensureDirectoriesExist();
+  const missingConfig = !githubToken || !repoOwner || !repoName;
 
+  if (!missingConfig) {
+    try {
+      await ensureDirectoriesExist();
+    } catch (err) {
+      console.warn('Failed to ensure directories exist:', err);
+    }
+  } else {
+    showModalStream.set(true);
+  }
 
   // Apply theme
   currentTheme.subscribe(theme => applyThemeToPage(theme));
@@ -352,16 +363,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     return Array.from(set).sort();
   });
 
-  // 🟡 Fetch index.json and hydrate the stream
-  try {
-    const indexData = await fetchDocumentIndexFromGitHub();
-    documentsStream.set(indexData); // Hydrate the grid with document metadata
-  } catch (err) {
-    console.warn("Using empty index as fallback.");
-    documentsStream.set([]); // Fallback: start with empty list
+  if (!missingConfig) {
+    // 🟡 Fetch index.json and hydrate the stream
+    try {
+      const indexData = await fetchDocumentIndexFromGitHub();
+      documentsStream.set(indexData); // Hydrate the grid with document metadata
+    } catch (err) {
+      console.warn("Using empty index as fallback.");
+      documentsStream.set([]); // Fallback: start with empty list
+    }
   }
 
-  const showModalStream = new Stream(false);
   const userAvatarStream = new Stream('doc.webp');
   const userAvatar = avatarDropdown(
     userAvatarStream,
