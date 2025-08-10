@@ -380,6 +380,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.documentsStream = documentsStream;
   const showFormStream = new Stream(false);
   const droppedFileStream = new Stream(null);
+  const droppedFilesQueue = [];
   const knownCategoriesStream = derived(documentsStream, docs => {
     const set = new Set(docs.map(doc => doc.category?.trim()).filter(Boolean));
     return Array.from(set).sort();
@@ -442,10 +443,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   dropZone.addEventListener('drop', e => {
     e.preventDefault();
     dropZone.style.background = 'transparent';
-    const file = e.dataTransfer.files[0];
-    if (file) {
-      droppedFileStream.set(file);
-      showFormStream.set(true);
+    const files = Array.from(e.dataTransfer.files || []);
+    if (files.length) {
+      droppedFilesQueue.push(...files);
+      if (!showFormStream.get()) {
+        const nextFile = droppedFilesQueue.shift();
+        droppedFileStream.set(nextFile);
+        showFormStream.set(true);
+      }
+    }
+  });
+
+  showFormStream.subscribe(open => {
+    if (!open && droppedFilesQueue.length > 0) {
+      const nextFile = droppedFilesQueue.shift();
+      setTimeout(() => {
+        droppedFileStream.set(nextFile);
+        showFormStream.set(true);
+      }, 0);
     }
   });
 
